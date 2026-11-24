@@ -115,7 +115,7 @@ const audioEl = $('localAudioEl');
    不声明 crossOrigin 时整条输出恒为 0（表现为「只有站内三首 MP3 有声音」）。 */
 audioEl.crossOrigin = 'anonymous';
 /* iOS/iPadOS 的 Web Audio 输出会被静音拨片整段掐掉，媒体元素接进去后同样静默，
-   因此 Apple 触屏设备让 <audio> 直出；桌面保留干湿两路与房间混响。 */
+   因此 Apple 触屏设备让 <audio> 直出；桌面保留轻量黑胶音色链。 */
 const IS_APPLE_TOUCH = /iP(hone|ad|od)/.test(navigator.userAgent)
   || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const immerseBtn = $('immerseBtn');
@@ -139,6 +139,7 @@ const deckPrev = $('deckPrev');
 const deckNext = $('deckNext');
 const deckTitle = $('deckTitle');
 const deckSrc = $('deckSrc');
+const deckCondition = $('deckCondition');
 const deckBar = $('deckBar');
 const deckBarWrap = $('deckBarWrap');
 const deckTime = $('deckTime');
@@ -175,6 +176,7 @@ const state = {
   scene: null,
   sceneFailed: false,
   rpm: 33,
+  condition: 'daily',
   karaokeChar: (() => { try { return localStorage.getItem('jc-karaoke') !== '0'; } catch { return true; } })()
 };
 
@@ -628,6 +630,49 @@ function getWear(n) {
   return Math.min(1, getWearSeconds(n) / WEAR_FULL_SECONDS);
 }
 
+/* ── 唱片状态：洁净 / 日常 / 磨损 ────────────────────────── */
+const CONDITION_ORDER = ['clean', 'daily', 'worn'];
+const CONDITION_TEXT = { clean: '洁净', daily: '日常', worn: '磨损' };
+
+function readCondition(n) {
+  try {
+    const saved = localStorage.getItem(`jc-condition-${n}`);
+    if (CONDITION_ORDER.includes(saved)) return saved;
+  } catch { /* 存储不可用时用默认 */ }
+  return 'daily';
+}
+
+function saveCondition(n, condition) {
+  try { localStorage.setItem(`jc-condition-${n}`, condition); } catch { /* ignore */ }
+}
+
+function updateConditionUI() {
+  if (!deckCondition) return;
+  deckCondition.textContent = CONDITION_TEXT[state.condition] || '日常';
+  deckCondition.dataset.condition = state.condition;
+  deckCondition.setAttribute('aria-label', `切换唱片状态：${deckCondition.textContent}`);
+}
+
+function syncCondition(album = ALBUMS[state.index], track = lyricsState.track) {
+  state.condition = readCondition(album.n);
+  updateConditionUI();
+  audio.setRecord({
+    seed: `${album.n}-${track}`,
+    wear: getWear(album.n),
+    condition: state.condition
+  });
+}
+
+function cycleCondition() {
+  const album = ALBUMS[state.index];
+  const next = CONDITION_ORDER[(CONDITION_ORDER.indexOf(state.condition) + 1) % CONDITION_ORDER.length];
+  state.condition = next;
+  saveCondition(album.n, next);
+  audio.setCondition(next);
+  updateConditionUI();
+  emit('jc:condition', { n: album.n, condition: next });
+}
+
 function accrueWear() {
   if (!activeAudioKey || audioEl.paused || audioEl.ended) {
     wearLastT = -1;
@@ -649,6 +694,8 @@ function accrueWear() {
       if (nowMs > wearFlushAt && state.scene) {
         wearFlushAt = nowMs + 3000;
         state.scene.setWear();
+        // 磨损随播放缓慢累积，状态噪底同步变密（同 seed 不会重置噪声图案）
+        audio.setRecord({ wear: getWear(n) });
       }
     }
   }
@@ -795,6 +842,7 @@ async function playTrack(trackIndex, { toggle = false } = {}) {
   audioEl.muted = !state.sound;
 
   lyricsState.track = t;
+  syncCondition(album, t);
   if (lyricsState.open) {
     buildLyricsTracks(album);
     renderLyricsSheet();
@@ -1333,6 +1381,7 @@ function fillStage(album, index) {
   document.title = `${album.title} · 周杰伦黑胶典藏`;
   refreshPlayingBadges();
   ensureLyrics(album.n, 0);
+  syncCondition(album, 0);
 }
 
 /* ── 3D 唱机 ──────────────────────────────────────────────── */
@@ -1729,7 +1778,7 @@ enterBtn.addEventListener('click', async () => {
   if (enterBtn.disabled || gateOpened) return;
   gateOpened = true;
   audio.unlock().catch(() => {});
-  // 本地音频接入 Web Audio：干湿两路 + 生成式房间混响（iOS 改直出，避免静音拨片连带静默）
+  // 本地音频接入 Web Audio：RIAA 近似倾斜 + wow/flutter + 限幅（iOS 改直出，避免静音拨片连带静默）
   if (!IS_APPLE_TOUCH) audio.attachElement(audioEl);
   audio.setEnabled(state.sound);
   gate.classList.add('is-open');
@@ -1760,6 +1809,7 @@ function toggleSound() {
 
 soundBtn.addEventListener('click', toggleSound);
 imxSound.addEventListener('click', toggleSound);
+if (deckCondition) deckCondition.addEventListener('click', cycleCondition);
 applySound();
 
 rack.addEventListener('click', (e) => {

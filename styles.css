@@ -2877,6 +2877,31 @@ body.immersive .topbar * { opacity: 0; pointer-events: none !important; }
   border-radius: 1px;
 }
 .deck-player__src--local { color: var(--brass); border-color: rgba(201, 168, 106, 0.45); }
+.deck-player__condition {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 4px 7px;
+  min-height: 22px;
+  font-size: 7px;
+  letter-spacing: 0.18em;
+  color: rgba(201, 168, 106, 0.78);
+  border: 1px solid rgba(201, 168, 106, 0.32);
+  border-radius: 2px;
+  transition: color 0.25s, border-color 0.25s, background 0.25s;
+}
+.deck-player__condition:hover {
+  color: var(--brass);
+  border-color: rgba(201, 168, 106, 0.72);
+  background: rgba(201, 168, 106, 0.06);
+}
+@media (pointer: coarse) {
+  .deck-player__condition {
+    min-height: 28px;
+    padding: 7px 7px;
+    font-size: 8px;
+    letter-spacing: 0.14em;
+  }
+}
 .deck-player__bar {
   position: relative;
   height: 15px;
@@ -3095,6 +3120,8 @@ body.immersive .topbar * { opacity: 0; pointer-events: none !important; }
 .bench .deck-player__time { color: var(--ris); }
 .bench .deck-player__src { color: var(--ris); border-color: rgba(42, 33, 24, 0.4); }
 .bench .deck-player__src--local { color: var(--rbr); border-color: rgba(138, 106, 51, 0.55); }
+.bench .deck-player__condition { color: var(--rbr); border-color: rgba(138, 106, 51, 0.45); }
+.bench .deck-player__condition:hover { background: rgba(138, 106, 51, 0.08); border-color: rgba(138, 106, 51, 0.75); }
 .bench .deck-player__time { color: var(--ris); min-width: 0; text-align: left; }
 .bench hose-slider { width: 210px; flex: 0 0 auto; }
 .bench hose-toast { width: 112px; flex: 0 0 auto; align-self: flex-end; }
