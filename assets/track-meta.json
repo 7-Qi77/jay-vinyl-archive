@@ -1,0 +1,628 @@
+{
+ "version": 1,
+ "generatedAt": 1795283655,
+ "albums": {
+  "1": {
+   "itunesId": 535790918,
+   "tracks": [
+    {
+     "title": "可爱女人",
+     "trackId": 535791109,
+     "trackNumber": 1,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/42/97/aa/4297aae0-c997-12df-7d10-a14685cffcc6/mzaf_7566330534609965171.plus.aac.p.m4a",
+     "durationMs": 239027,
+     "lrclibId": 10066817,
+     "hasSynced": true
+    },
+    {
+     "title": "星晴",
+     "trackId": 535791111,
+     "trackNumber": 3,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/84/97/19/849719eb-321a-f3aa-7bf8-c53ab439f2db/mzaf_18389453262807796706.plus.aac.p.m4a",
+     "durationMs": 259400,
+     "lrclibId": 17752,
+     "hasSynced": true
+    },
+    {
+     "title": "龙卷风",
+     "trackId": 535791117,
+     "trackNumber": 9,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/37/bd/8e/37bd8ee8-d080-3c1c-a966-875cb6811c33/mzaf_5956109222185640025.plus.aac.p.m4a",
+     "durationMs": 250867,
+     "lrclibId": 5854103,
+     "hasSynced": true
+    },
+    {
+     "title": "黑色幽默",
+     "trackId": 535791114,
+     "trackNumber": 6,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/2c/9f/9f/2c9f9fd0-d331-c8d4-5aa2-f39928a02ed1/mzaf_5432668556852856877.plus.aac.p.m4a",
+     "durationMs": 283133,
+     "lrclibId": 18883,
+     "hasSynced": true
+    }
+   ]
+  },
+  "2": {
+   "itunesId": 535739206,
+   "tracks": [
+    {
+     "title": "简单爱",
+     "trackId": 535739351,
+     "trackNumber": 3,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/99/c2/35/99c23519-691d-28bd-3263-54ee44ea4b1a/mzaf_16660115524814344678.plus.aac.p.m4a",
+     "durationMs": 270987,
+     "lrclibId": 18317,
+     "hasSynced": true
+    },
+    {
+     "title": "双截棍",
+     "trackId": 535739358,
+     "trackNumber": 9,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/ec/57/fa/ec57fa84-33b8-eb5c-b034-269f3dd2d2dd/mzaf_1927880058572823750.plus.aac.p.m4a",
+     "durationMs": 201013,
+     "lrclibId": 18778274,
+     "hasSynced": false
+    },
+    {
+     "title": "开不了口",
+     "trackId": 535739353,
+     "trackNumber": 5,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/e1/c4/a3/e1c4a358-007b-80da-d231-3fe75c677cb8/mzaf_8707193163624256428.plus.aac.p.m4a",
+     "durationMs": 284973,
+     "lrclibId": 10069804,
+     "hasSynced": true
+    },
+    {
+     "title": "安静",
+     "trackId": 535739359,
+     "trackNumber": 10,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/d4/c3/50/d4c35090-5ce2-0577-89a9-a7b5aed8962b/mzaf_761017040051055634.plus.aac.p.m4a",
+     "durationMs": 334240,
+     "lrclibId": 17167,
+     "hasSynced": true
+    }
+   ]
+  },
+  "3": {
+   "itunesId": 536161722,
+   "tracks": [
+    {
+     "title": "半兽人",
+     "trackId": 536162077,
+     "trackNumber": 1,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/67/05/7a/67057afc-968f-ecb2-e6ec-1ea2c90ddd30/mzaf_14101473463323725312.plus.aac.p.m4a",
+     "durationMs": 245400,
+     "lrclibId": 18878996,
+     "hasSynced": true
+    },
+    {
+     "title": "半岛铁盒",
+     "trackId": 536162079,
+     "trackNumber": 2,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/5d/49/2d/5d492d71-e1df-f87c-a217-1f5a46793c50/mzaf_15710362005868192426.plus.aac.p.m4a",
+     "durationMs": 317400,
+     "lrclibId": 19101941,
+     "hasSynced": true
+    },
+    {
+     "title": "暗号",
+     "trackId": 536162080,
+     "trackNumber": 3,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/ac/08/3b/ac083b72-cf28-41ed-0f63-e27dfd219c91/mzaf_15699907835436662532.plus.aac.p.m4a",
+     "durationMs": 269760,
+     "lrclibId": 19279255,
+     "hasSynced": true
+    },
+    {
+     "title": "最后的战役",
+     "trackId": 536162284,
+     "trackNumber": 10,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/9d/45/5c/9d455c3a-64a5-4b31-c56f-678ea71f5032/mzaf_15483328309019029894.plus.aac.p.m4a",
+     "durationMs": 251160,
+     "lrclibId": 10250016,
+     "hasSynced": true
+    }
+   ]
+  },
+  "4": {
+   "itunesId": 535824731,
+   "tracks": [
+    {
+     "title": "以父之名",
+     "trackId": 535824736,
+     "trackNumber": 1,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/99/f2/8c/99f28c96-cdba-c2dd-b120-dd67eaff252b/mzaf_17363371424903979351.plus.aac.p.m4a",
+     "durationMs": 342000,
+     "lrclibId": 16510,
+     "hasSynced": true
+    },
+    {
+     "title": "晴天",
+     "trackId": 535824738,
+     "trackNumber": 3,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/20/d0/e7/20d0e7db-9c12-795a-d738-2fc3dde4ac9a/mzaf_10317517925583301645.plus.aac.p.m4a",
+     "durationMs": 269747,
+     "lrclibId": 17788,
+     "hasSynced": true
+    },
+    {
+     "title": "东风破",
+     "trackId": 535824740,
+     "trackNumber": 5,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/48/e9/77/48e97700-c95b-3d23-17bc-ec6673433588/mzaf_7829398592808176673.plus.aac.p.m4a",
+     "durationMs": 315413,
+     "lrclibId": 5906061,
+     "hasSynced": true
+    },
+    {
+     "title": "三年二班",
+     "trackId": 535824739,
+     "trackNumber": 4,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/cc/9c/d3/cc9cd3f0-3c99-f073-a763-77c2715060e9/mzaf_10430141259357522888.plus.aac.p.m4a",
+     "durationMs": 280387,
+     "lrclibId": 16373,
+     "hasSynced": true
+    }
+   ]
+  },
+  "5": {
+   "itunesId": 536114662,
+   "tracks": [
+    {
+     "title": "七里香",
+     "trackId": 536115195,
+     "trackNumber": 2,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/99/4e/e2/994ee285-7c0d-73ab-85b7-8d3899a17242/mzaf_12441330510018253101.plus.aac.p.m4a",
+     "durationMs": 297200,
+     "lrclibId": 16363,
+     "hasSynced": true
+    },
+    {
+     "title": "借口",
+     "trackId": 536115196,
+     "trackNumber": 3,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/aa/79/db/aa79db76-0104-dfe8-22e4-141ec57ba697/mzaf_3931826197366023547.plus.aac.p.m4a",
+     "durationMs": 258267,
+     "lrclibId": 24627280,
+     "hasSynced": true
+    },
+    {
+     "title": "搁浅",
+     "trackId": 536115199,
+     "trackNumber": 6,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/f7/e6/e6/f7e6e6e4-4dfa-7e7f-b905-a67738621992/mzaf_5977864392377716485.plus.aac.p.m4a",
+     "durationMs": 238133,
+     "lrclibId": 3693912,
+     "hasSynced": true
+    },
+    {
+     "title": "园游会",
+     "trackId": 536115202,
+     "trackNumber": 9,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/4f/c7/de/4fc7deec-01ab-7f1b-29d8-1ccba53d9301/mzaf_12599451594723341287.plus.aac.p.m4a",
+     "durationMs": 253560,
+     "lrclibId": 5789220,
+     "hasSynced": true
+    }
+   ]
+  },
+  "6": {
+   "itunesId": 536009641,
+   "tracks": [
+    {
+     "title": "夜曲",
+     "trackId": 536009642,
+     "trackNumber": 1,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/49/d9/63/49d96370-e197-5629-b8bb-bdd954c1b576/mzaf_217123187122990137.plus.aac.p.m4a",
+     "durationMs": 228773,
+     "lrclibId": 16978,
+     "hasSynced": true
+    },
+    {
+     "title": "发如雪",
+     "trackId": 536009644,
+     "trackNumber": 3,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/ba/c1/6f/bac16f2d-765b-66bc-dbbe-641875368d3b/mzaf_13471254576706727031.plus.aac.p.m4a",
+     "durationMs": 301640,
+     "lrclibId": 22506023,
+     "hasSynced": true
+    },
+    {
+     "title": "枫",
+     "trackId": 536009647,
+     "trackNumber": 6,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/8e/73/ea/8e73ea9a-9fa6-bd5e-26a5-965e4a1ce51d/mzaf_4647971212508521464.plus.aac.p.m4a",
+     "durationMs": 277027,
+     "lrclibId": 15617507,
+     "hasSynced": true
+    },
+    {
+     "title": "一路向北",
+     "trackId": 536009753,
+     "trackNumber": 12,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/f6/23/91/f6239173-79c5-663b-0894-b143753d1722/mzaf_10517715920157224642.plus.aac.p.m4a",
+     "durationMs": 294240,
+     "lrclibId": 16354,
+     "hasSynced": true
+    }
+   ]
+  },
+  "7": {
+   "itunesId": 536285027,
+   "tracks": [
+    {
+     "title": "夜的第七章",
+     "trackId": 536285257,
+     "trackNumber": 1,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/58/d8/ae/58d8aef1-7105-0ff0-b3c7-f28150620a36/mzaf_14990035321082766489.plus.aac.p.m4a",
+     "durationMs": 228640,
+     "lrclibId": 16980,
+     "hasSynced": true
+    },
+    {
+     "title": "千里之外",
+     "trackId": 536285259,
+     "trackNumber": 3,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/1f/7d/8e/1f7d8e3a-5555-5f02-67c2-48175a962ce2/mzaf_9705650129739495572.plus.aac.p.m4a",
+     "durationMs": 256387,
+     "lrclibId": 16732,
+     "hasSynced": true
+    },
+    {
+     "title": "菊花台",
+     "trackId": 536285266,
+     "trackNumber": 10,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/20/15/16/2015168f-7021-f6b6-88d1-f8d02ba84725/mzaf_6852641384965058809.plus.aac.p.m4a",
+     "durationMs": 293973,
+     "lrclibId": 18466,
+     "hasSynced": true
+    },
+    {
+     "title": "听妈妈的话",
+     "trackId": 536285258,
+     "trackNumber": 2,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/51/d3/8b/51d38b84-cde4-1be0-9569-33eee639af73/mzaf_7426420804706733570.plus.aac.p.m4a",
+     "durationMs": 265987,
+     "lrclibId": 18878840,
+     "hasSynced": true
+    }
+   ]
+  },
+  "8": {
+   "itunesId": 536030690,
+   "tracks": [
+    {
+     "title": "牛仔很忙",
+     "trackId": 536030693,
+     "trackNumber": 1,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/2c/3e/c6/2c3ec6d6-ae5b-d42c-2cbe-432182e069c3/mzaf_12650418235828384133.plus.aac.p.m4a",
+     "durationMs": 168187,
+     "lrclibId": 18113,
+     "hasSynced": true
+    },
+    {
+     "title": "青花瓷",
+     "trackId": 536030695,
+     "trackNumber": 3,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/3a/15/ff/3a15ff0b-ee24-a863-db04-8a489be66397/mzaf_1259240667288251806.plus.aac.p.m4a",
+     "durationMs": 239347,
+     "lrclibId": 18793,
+     "hasSynced": true
+    },
+    {
+     "title": "彩虹",
+     "trackId": 536030694,
+     "trackNumber": 2,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/10/f8/58/10f85860-fbe9-b372-338a-48844d65e969/mzaf_8275780661696818690.plus.aac.p.m4a",
+     "durationMs": 263787,
+     "lrclibId": 17359,
+     "hasSynced": true
+    },
+    {
+     "title": "蒲公英的约定",
+     "trackId": 536030697,
+     "trackNumber": 5,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/e1/e9/94/e1e9945c-e0a8-d7fc-9b85-843cf785cecb/mzaf_5426248604184303369.plus.aac.p.m4a",
+     "durationMs": 247200,
+     "lrclibId": 5821282,
+     "hasSynced": true
+    }
+   ]
+  },
+  "9": {
+   "itunesId": 1624000713,
+   "tracks": [
+    {
+     "title": "稻香",
+     "trackId": 1624001324,
+     "trackNumber": 11,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/af/d8/da/afd8daa7-b2aa-fb44-b4e0-258ad25187f5/mzaf_18323630198043973445.plus.aac.p.m4a",
+     "durationMs": 223453,
+     "lrclibId": 6716674,
+     "hasSynced": true
+    },
+    {
+     "title": "说好的幸福呢",
+     "trackId": 1624001319,
+     "trackNumber": 6,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/80/f3/b9/80f3b9f7-4c57-5806-cd1e-599eedfbba7e/mzaf_16794607708915683607.plus.aac.p.m4a",
+     "durationMs": 256720,
+     "lrclibId": 6716720,
+     "hasSynced": true
+    },
+    {
+     "title": "兰亭序",
+     "trackId": 1624001320,
+     "trackNumber": 7,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/f3/3c/a7/f33ca73a-8d89-6b63-4130-fe5a8b2ed222/mzaf_5252536380931031480.plus.aac.p.m4a",
+     "durationMs": 253960,
+     "lrclibId": 18878863,
+     "hasSynced": true
+    },
+    {
+     "title": "花海",
+     "trackId": 1624001317,
+     "trackNumber": 4,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/1c/3a/eb/1c3aebf6-4a62-d5ea-c817-135d74a3a69c/mzaf_15367067968247495108.plus.aac.p.m4a",
+     "durationMs": 264080,
+     "lrclibId": 18435,
+     "hasSynced": true
+    }
+   ]
+  },
+  "10": {
+   "itunesId": 536247746,
+   "tracks": [
+    {
+     "title": "烟花易冷",
+     "trackId": 536248196,
+     "trackNumber": 3,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/1e/e2/ae/1ee2aeca-d817-3e80-62d8-b351a1d6efb9/mzaf_13139180540057577530.plus.aac.p.m4a",
+     "durationMs": 263173,
+     "lrclibId": 11738579,
+     "hasSynced": true
+    },
+    {
+     "title": "好久不见",
+     "trackId": 536248198,
+     "trackNumber": 5,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/92/c9/49/92c949e1-6622-42e8-38cf-b013ac9cb5ad/mzaf_4718354764470687422.plus.aac.p.m4a",
+     "durationMs": 252453,
+     "lrclibId": 10250011,
+     "hasSynced": true
+    },
+    {
+     "title": "说了再见",
+     "trackId": 536248195,
+     "trackNumber": 2,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/b8/38/dd/b838dd8f-828b-9afc-ecaf-a889737c7d63/mzaf_843469504868868567.plus.aac.p.m4a",
+     "durationMs": 282720,
+     "lrclibId": 7340399,
+     "hasSynced": true
+    },
+    {
+     "title": "超人不会飞",
+     "trackId": 536248204,
+     "trackNumber": 11,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/71/52/95/715295f2-b705-b9e7-083f-d7084c498645/mzaf_8363492262613482042.plus.aac.p.m4a",
+     "durationMs": 299800,
+     "lrclibId": 10250026,
+     "hasSynced": true
+    },
+    {
+     "title": "我落泪情绪零碎",
+     "trackId": 536248201,
+     "trackNumber": 8,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/e3/e7/55/e3e75568-4b8f-5886-764d-e3b7d837bd1a/mzaf_14012557659642720204.plus.aac.p.m4a",
+     "durationMs": 258147,
+     "lrclibId": 13534494,
+     "hasSynced": true
+    }
+   ]
+  },
+  "11": {
+   "itunesId": 535754551,
+   "tracks": [
+    {
+     "title": "惊叹号",
+     "trackId": 535754616,
+     "trackNumber": 1,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/44/1f/67/441f674f-802e-7862-098e-71cbd6d6e1cf/mzaf_9073995650166098322.plus.aac.p.m4a",
+     "durationMs": 231267,
+     "lrclibId": 24627028,
+     "hasSynced": true
+    },
+    {
+     "title": "Mine Mine",
+     "trackId": 535754619,
+     "trackNumber": 3,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/de/ce/28/dece286c-05f1-1012-8b6f-8e6e223ada4e/mzaf_12463810760251867975.plus.aac.p.m4a",
+     "durationMs": 268173,
+     "lrclibId": 3219268,
+     "hasSynced": true
+    },
+    {
+     "title": "你好吗",
+     "trackId": 535754621,
+     "trackNumber": 5,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/66/9b/65/669b65ce-4b12-d599-2293-ac123a74a78b/mzaf_3161040461249644155.plus.aac.p.m4a",
+     "durationMs": 224427,
+     "lrclibId": 10250006,
+     "hasSynced": true
+    },
+    {
+     "title": "琴伤",
+     "trackId": 535754623,
+     "trackNumber": 7,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/1b/2f/fb/1b2ffb1e-acd3-7382-b404-dbba6089947b/mzaf_7500739621618700055.plus.aac.p.m4a",
+     "durationMs": 199560,
+     "lrclibId": 24630638,
+     "hasSynced": true
+    }
+   ]
+  },
+  "12": {
+   "itunesId": 587743633,
+   "tracks": [
+    {
+     "title": "明明就",
+     "trackId": 587743637,
+     "trackNumber": 4,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/f8/26/78/f8267897-56d4-113e-1229-25835d85a9cd/mzaf_6646037562562297510.plus.aac.p.m4a",
+     "durationMs": 260387,
+     "lrclibId": 6716608,
+     "hasSynced": true
+    },
+    {
+     "title": "红尘客栈",
+     "trackId": 587743642,
+     "trackNumber": 8,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/b1/05/97/b10597b7-4202-ec69-4276-e75250010e88/mzaf_14577374834119768310.plus.aac.p.m4a",
+     "durationMs": 274067,
+     "lrclibId": 24623004,
+     "hasSynced": true
+    },
+    {
+     "title": "大笨钟",
+     "trackId": 587743644,
+     "trackNumber": 10,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/9f/17/8f/9f178f75-a769-ca20-4491-8802e2980ed2/mzaf_3767110424197315213.plus.aac.p.m4a",
+     "durationMs": 242840,
+     "lrclibId": 10250010,
+     "hasSynced": true
+    },
+    {
+     "title": "哪里都是你",
+     "trackId": 587743645,
+     "trackNumber": 11,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/b3/52/80/b3528082-9303-73a2-0929-4c369222fdc1/mzaf_13740674508501530259.plus.aac.p.m4a",
+     "durationMs": 279040,
+     "lrclibId": 3219246,
+     "hasSynced": true
+    }
+   ]
+  },
+  "13": {
+   "itunesId": 944321428,
+   "tracks": [
+    {
+     "title": "阳明山",
+     "trackId": 944321438,
+     "trackNumber": 1,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/94/7f/24/947f24d2-d1a2-8f05-4c43-dc2656cd7a2b/mzaf_4466420568560197213.plus.aac.p.m4a",
+     "durationMs": 152152,
+     "lrclibId": 18239305,
+     "hasSynced": true
+    },
+    {
+     "title": "算什么男人",
+     "trackId": 944321440,
+     "trackNumber": 3,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/f9/de/d8/f9ded803-0f97-2417-4986-68192f72861b/mzaf_17484332538573200084.plus.aac.p.m4a",
+     "durationMs": 288488,
+     "lrclibId": 18239303,
+     "hasSynced": true
+    },
+    {
+     "title": "手写的从前",
+     "trackId": 944321446,
+     "trackNumber": 8,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/58/12/32/58123273-949d-69ec-1651-55ec8c1b7d7b/mzaf_2028662354983002746.plus.aac.p.m4a",
+     "durationMs": 297564
+    },
+    {
+     "title": "听见下雨的声音",
+     "trackId": 944321451,
+     "trackNumber": 12,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/4a/76/87/4a768770-85b4-846f-f779-259801e1803f/mzaf_13011721415631268082.plus.aac.p.m4a",
+     "durationMs": 279412,
+     "lrclibId": 24624868,
+     "hasSynced": true
+    }
+   ]
+  },
+  "14": {
+   "itunesId": 1118757859,
+   "tracks": [
+    {
+     "title": "床边故事",
+     "trackId": 1118757868,
+     "trackNumber": 1,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/6c/50/9b/6c509bcf-aac6-d502-2b79-48cec9ca54aa/mzaf_6096657394986093401.plus.aac.p.m4a",
+     "durationMs": 225808,
+     "lrclibId": 6716571,
+     "hasSynced": true
+    },
+    {
+     "title": "前世情人",
+     "trackId": 1118757871,
+     "trackNumber": 4,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/ed/d4/92/edd4925d-3a55-1a8c-100a-f31f254a7c74/mzaf_732340226070484304.plus.aac.p.m4a",
+     "durationMs": 202607,
+     "lrclibId": 7976212,
+     "hasSynced": true
+    },
+    {
+     "title": "告白气球",
+     "trackId": 1118757877,
+     "trackNumber": 8,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/e5/24/59/e5245986-c2d0-a701-5bde-bbc9373da1dc/mzaf_13819014783674734406.plus.aac.p.m4a",
+     "durationMs": 215590,
+     "lrclibId": 5708272,
+     "hasSynced": true
+    },
+    {
+     "title": "不该",
+     "trackId": 1118757873,
+     "trackNumber": 6,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/0d/f5/19/0df519a2-6d7f-335b-91de-6af767d4bb5b/mzaf_11003893469591393047.plus.aac.p.m4a",
+     "durationMs": 291407,
+     "lrclibId": 29802706,
+     "hasSynced": true
+    }
+   ]
+  },
+  "15": {
+   "itunesId": 1632190508,
+   "tracks": [
+    {
+     "title": "最伟大的作品",
+     "trackId": 1632190510,
+     "trackNumber": 2,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/41/02/92/41029262-68f1-8c45-082f-721a20fe3b03/mzaf_10254939471295366897.plus.aac.p.m4a",
+     "durationMs": 244046,
+     "lrclibId": 11739556,
+     "hasSynced": true
+    },
+    {
+     "title": "说好不哭",
+     "trackId": 1632190512,
+     "trackNumber": 4,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/4f/fd/ab/4ffdab66-7060-48d2-3fcf-cea0a68eaeed/mzaf_1706730775973320942.plus.aac.p.m4a",
+     "durationMs": 220693,
+     "lrclibId": 38716270,
+     "hasSynced": true
+    },
+    {
+     "title": "Mojito",
+     "trackId": 1632190515,
+     "trackNumber": 7,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/ae/2d/6c/ae2d6cfc-6fb8-b0b1-b3e4-b436392d6d15/mzaf_8392626921408321134.plus.aac.p.m4a",
+     "durationMs": 185453,
+     "lrclibId": 9267470,
+     "hasSynced": true
+    },
+    {
+     "title": "红颜如霜",
+     "trackId": 1632190513,
+     "trackNumber": 5,
+     "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/6b/a4/32/6ba43285-4d0b-c3c2-eb4f-0fa7959d63e9/mzaf_6018442156980533200.plus.aac.p.m4a",
+     "durationMs": 257106,
+     "lrclibId": 6716691,
+     "hasSynced": true
+    }
+   ]
+  }
+ }
+}

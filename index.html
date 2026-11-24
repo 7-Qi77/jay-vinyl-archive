@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#050403" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>周杰伦 · 黑胶典藏 — JAY CHOU THE VINYL ARCHIVE</title>
+  <meta name="description" content="周杰伦十六张录音室专辑的黑胶沉浸式陈列。原版封面、双面封套与原创档案内页，官方试听与本机完整版播放，同步歌词，程序合成黑胶音效。" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230a0908' stroke='%23c9a86a' stroke-width='2'/%3E%3Ccircle cx='32' cy='32' r='10' fill='%23c9a86a'/%3E%3Ccircle cx='32' cy='32' r='3' fill='%230a0908'/%3E%3C/svg%3E" />
+  <link rel="preload" href="./assets/fonts/NotoSerifSC-900.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="./styles.css" />
+  <script type="importmap">
+    { "imports": { "three": "./assets/vendor/three.module.js" } }
+  </script>
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <div class="cursor" id="cursor" aria-hidden="true">
+    <span class="cursor__ring"></span>
+    <span class="cursor__dot"></span>
+    <span class="cursor__label" id="cursorLabel"></span>
+  </div>
+
+  <header class="topbar">
+    <a class="brand" href="#" id="brandLink" aria-label="返回唱片柜">
+      <span class="brand__mark">JC</span>
+      <span class="brand__text">
+        <strong>JAY CHOU</strong>
+        <em>THE VINYL ARCHIVE</em>
+      </span>
+    </a>
+    <div class="topbar__right">
+      <span class="topbar__count">16 STUDIO ALBUMS <i></i> 2000—2026</span>
+      <button class="icon-btn import-btn" id="importAudioBtn" type="button" aria-label="导入本机音频与歌词">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 15V4M7.5 8.5 12 4l4.5 4.5" />
+          <path d="M4 15.5v3A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5v-3" />
+        </svg>
+      </button>
+      <button class="icon-btn" id="immerseBtn" type="button" aria-label="进入沉浸模式" data-cursor="沉浸" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M8 3H4v4M16 3h4v4M4 17v4h4M20 17v4h-4" />
+        </svg>
+      </button>
+      <button class="icon-btn" id="soundBtn" type="button" aria-pressed="true" aria-label="关闭黑胶音效">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path class="icon-btn__body" d="M4 9.5h3.2L12 6v12l-4.8-3.5H4z" />
+          <path class="icon-btn__wave" d="M16 9.2a4 4 0 0 1 0 5.6M18.6 6.8a7.4 7.4 0 0 1 0 10.4" />
+          <path class="icon-btn__slash" d="M4 4l16 16" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ───────────────────────── 唱片柜 ───────────────────────── -->
+    <section class="view view--crate" id="viewCrate">
+      <div class="crate-main">
+        <div class="hero">
+          <p class="eyebrow"><span class="rule"></span> A LISTENING ARCHIVE</p>
+          <h1 class="hero__title">
+            <span class="hero__cn">黑胶</span>
+            <span class="hero__cn hero__cn--indent">典藏</span>
+          </h1>
+          <p class="hero__en">THE VINYL<br />ARCHIVE</p>
+          <p class="hero__desc">从 2000 到 2026，十六张录音室专辑。<br />按年份陈列，抽出任意一张，放上唱机。</p>
+          <div class="hero__hint">
+            <span class="hero__hint-line"></span>
+            <span>点击唱片 · 抽出试听</span>
+          </div>
+        </div>
+
+        <div class="cabinet-wrap" id="cabinetWrap">
+          <div class="cabinet" id="cabinet">
+            <div class="cabinet__glow" aria-hidden="true"></div>
+            <div class="cabinet__head">
+              <span class="cabinet__plaque">JAY CHOU · 16 STUDIO ALBUMS</span>
+              <span class="cabinet__led" aria-hidden="true"></span>
+            </div>
+            <div class="rack" id="rack" aria-label="周杰伦专辑唱片柜"></div>
+            <div class="cabinet__foot" aria-hidden="true">
+              <span>TAIWAN · 2000—2026</span>
+              <span>33⅓ RPM</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="crate-footer">
+        <p>非官方粉丝项目 · 封面与 30 秒试听来自 Apple Music 公开目录，版权归原权利人 · 完整版音频仅来自本机文件 · 歌词在线匹配自 lrclib 并缓存于本机 · 黑胶底噪程序合成</p>
+        <p class="crate-footer__side">ARCHIVE NO. 001 — 016</p>
+      </footer>
+    </section>
+
+    <!-- ───────────────────────── 听音室 ───────────────────────── -->
+    <section class="view view--stage" id="viewStage" hidden>
+      <div class="stage-scrim" aria-hidden="true"></div>
+
+      <div class="stage-copy" id="stageCopy">
+        <div class="stage-kicker">
+          <span class="pulse-dot" aria-hidden="true"></span>
+          <span>NOW SPINNING</span>
+          <span class="stage-kicker__side">SIDE A</span>
+        </div>
+
+        <div class="stage-index">
+          <span class="stage-index__num" id="stageNum">01</span>
+          <span class="stage-index__total">/ 16</span>
+        </div>
+
+        <h2 class="stage-title" id="stageTitle">Jay</h2>
+        <p class="stage-en" id="stageEn">THE DEBUT</p>
+
+        <div class="stage-meta">
+          <span id="stageYear">2000.11.06</span>
+          <span class="stage-meta__dot"></span>
+          <span id="stageTag">同名专辑</span>
+          <span class="stage-meta__dot"></span>
+          <span id="stageMedia">磁带 · CD</span>
+        </div>
+
+        <p class="stage-desc" id="stageDesc"></p>
+
+        <div class="stage-tracks">
+          <div class="stage-tracks__head">
+            <span>曲目精选</span>
+            <span>点击播放 · 点“词”看内页</span>
+          </div>
+          <ol class="tracks" id="stageTracks"></ol>
+        </div>
+
+        <div class="memory" id="memoryBlock">
+          <button class="memory__toggle" id="memoryToggle" type="button" aria-expanded="false" aria-controls="memoryBody">
+            <span class="memory__label">那年的话</span>
+            <span class="memory__saved" id="memorySaved">写一句关于这张专辑的记忆</span>
+            <span class="memory__action" aria-hidden="true">
+              <svg class="memory__plus" viewBox="0 0 16 16"><path d="M8 2v12M2 8h12" /></svg>
+            </span>
+          </button>
+          <div class="memory__body" id="memoryBody" hidden>
+            <input class="memory__input" id="memoryInput" type="text" maxlength="80" autocomplete="off" spellcheck="false" aria-label="写下一句关于这张专辑的记忆" />
+            <span class="memory__hint">仅保存在本机</span>
+          </div>
+        </div>
+
+        <div class="stage-nav">
+          <button class="stage-btn" id="prevBtn" type="button" aria-label="上一张专辑">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+          </button>
+          <button class="stage-back" id="backBtn" type="button">
+            <span>返回唱片柜</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M13 5l7 7-7 7" /></svg>
+          </button>
+          <button class="stage-btn" id="nextBtn" type="button" aria-label="下一张专辑">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="stage-visual">
+        <div class="stage-visual__light" aria-hidden="true"></div>
+        <div class="stage-canvas-wrap" id="canvasWrap">
+          <canvas id="vinylCanvas"></canvas>
+          <div class="stage-fallback" id="stageFallback" aria-hidden="true">
+            <div class="fallback-disc"></div>
+          </div>
+        </div>
+        <div class="stage-sleeve" id="stageSleeve" role="button" tabindex="0" aria-pressed="false"
+          aria-label="翻面查看专辑内页" data-cursor="翻面"></div>
+
+        <div class="deck-player" id="deckPlayer" hidden>
+          <div class="deck-player__transport">
+            <button class="deck-player__btn" id="deckPrev" type="button" aria-label="上一首" data-cursor="上一首">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5l-9 7 9 7z"/><path d="M6 5v14" /></svg>
+            </button>
+            <button class="deck-player__play" id="deckPlay" type="button" aria-label="播放/暂停" data-cursor="播放">
+              <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" /></svg>
+              <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" /></svg>
+            </button>
+            <button class="deck-player__btn" id="deckNext" type="button" aria-label="下一首" data-cursor="下一首">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l9 7-9 7z"/><path d="M18 5v14" /></svg>
+            </button>
+          </div>
+          <div class="deck-player__info">
+            <div class="deck-player__title">
+              <strong id="deckTitle">—</strong>
+              <span class="deck-player__src" id="deckSrc">试听</span>
+            </div>
+            <div class="deck-player__bar" id="deckBarWrap" data-cursor="进度"><i id="deckBar"></i></div>
+          </div>
+          <span class="deck-player__time" id="deckTime">--:--</span>
+        </div>
+
+        <div class="stage-caption">
+          <span class="rpm-switch" role="group" aria-label="唱片转速">
+            <button type="button" data-rpm="33" class="is-active" aria-pressed="true">33⅓</button>
+            <button type="button" data-rpm="45" aria-pressed="false">45</button>
+          </span>
+          <i class="rpm-led" aria-hidden="true"></i>
+          <span>STEREO</span>
+          <span>COVER · APPLE MUSIC</span>
+        </div>
+      </div>
+
+      <div class="spine-rail-wrap">
+        <div class="spine-rail" id="spineRail" role="tablist" aria-label="切换专辑"></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="transition-veil" id="transitionVeil" aria-hidden="true"></div>
+  <div class="flight-layer" id="flightLayer" aria-hidden="true"></div>
+
+  <!-- ───────────────────────── 歌词内页 ───────────────────────── -->
+  <div class="lyrics" id="lyricsPanel" hidden aria-hidden="true">
+    <div class="lyrics__backdrop" id="lyricsBackdrop"></div>
+    <section class="lyrics__sheet" id="lyricsSheet" role="dialog" aria-modal="true" aria-labelledby="lyricsTitle">
+      <button class="lyrics__close" id="lyricsClose" type="button" aria-label="关闭歌词内页" data-cursor="关闭">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+      </button>
+
+      <aside class="lyrics__side">
+        <div class="lyrics__cover" id="lyricsCover" aria-hidden="true"></div>
+        <div class="lyrics__heading">
+          <span class="lyrics__kicker">LYRIC SHEET · 仅本机</span>
+          <h3 id="lyricsTitle">—</h3>
+          <p id="lyricsMeta">—</p>
+        </div>
+        <nav class="lyrics__tracks" id="lyricsTracks" aria-label="歌词曲目"></nav>
+        <p class="lyrics__note">播放时自动匹配歌词并缓存在本机；<br />也可拖入整张专辑的音频与 LRC，按文件名匹配。导入的音频保存在本机浏览器。</p>
+      </aside>
+
+      <div class="lyrics__page">
+        <header class="lyrics__head">
+          <span class="lyrics__trackno" id="lyricsTrackNo">A1</span>
+          <strong class="lyrics__trackname" id="lyricsTrackName">—</strong>
+          <span class="lyrics__source" id="lyricsSource"></span>
+          <span class="lyrics__local">LOCAL FIRST</span>
+        </header>
+        <div class="lyrics__audio">
+          <button class="lyrics__audio-pick" id="lyricsAudioPick" type="button" data-cursor="本地音频">放入本地音频</button>
+          <button class="lyrics__audio-play" id="lyricsAudioPlay" type="button" aria-label="播放本地音频" data-cursor="播放" hidden>
+            <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" /></svg>
+            <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" /></svg>
+          </button>
+          <span class="lyrics__audio-name" id="lyricsAudioName">仅本次会话</span>
+          <div class="lyrics__audio-track" aria-hidden="true"><i id="lyricsAudioProgress"></i></div>
+          <span class="lyrics__audio-time" id="lyricsAudioTime">--:--</span>
+        </div>
+        <input type="file" id="lyricsAudioFile" accept="audio/*" hidden />
+        <div class="lyrics__body" id="lyricsBody"></div>
+        <footer class="lyrics__foot">
+          <span id="lyricsPage">01 / 04</span>
+          <span class="lyrics__status" id="lyricsStatus" aria-live="polite"></span>
+          <div class="lyrics__actions">
+            <button class="lyrics__btn" id="lyricsBatchBtn" type="button" data-cursor="批量导入">批量导入</button>
+            <button class="lyrics__btn" id="lyricsImportBtn" type="button" data-cursor="导入">导入 LRC / TXT</button>
+            <button class="lyrics__btn lyrics__btn--muted" id="lyricsRemoveBtn" type="button" data-cursor="移除" hidden>移除</button>
+          </div>
+        </footer>
+        <input type="file" id="lyricsFile" accept=".lrc,.txt,text/plain" hidden />
+        <input type="file" id="lyricsBatchFile" accept="audio/*,.lrc,.txt,text/plain" multiple hidden />
+      </div>
+    </section>
+  </div>
+
+  <audio id="localAudioEl" preload="metadata"></audio>
+
+  <!-- ───────────────────────── 沉浸模式 ───────────────────────── -->
+  <div class="imx" id="imxUI" hidden aria-hidden="true">
+    <div class="imx__top">
+      <div class="imx__now">
+        <span class="imx__kicker"><i></i> NOW PLAYING</span>
+        <strong id="imxTitle">—</strong>
+        <em id="imxMeta">—</em>
+      </div>
+      <div class="imx__actions">
+        <button id="imxLyrics" type="button">歌词</button>
+        <button id="imxSound" type="button">声音</button>
+        <button id="imxExit" type="button">退出</button>
+      </div>
+    </div>
+    <div class="imx__bottom">
+      <p class="imx__lyric" id="imxLyric"></p>
+      <p class="imx__lyric-next" id="imxLyricNext"></p>
+      <div class="imx__player" id="imxPlayer">
+        <button class="imx__step" id="imxPrev" type="button" aria-label="上一首" data-cursor="上一首">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5l-9 7 9 7z"/><path d="M6 5v14" /></svg>
+        </button>
+        <button class="imx__play" id="imxPlay" type="button" aria-label="播放/暂停" data-cursor="播放">
+          <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" /></svg>
+          <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" /></svg>
+        </button>
+        <button class="imx__step" id="imxNext" type="button" aria-label="下一首" data-cursor="下一首">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l9 7-9 7z"/><path d="M18 5v14" /></svg>
+        </button>
+        <span id="imxTime">--:--</span>
+        <div class="imx__bar" aria-hidden="true"><i id="imxBar"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────────────────────── 入场 ───────────────────────── -->
+  <div class="gate" id="gate">
+    <div class="gate__room" aria-hidden="true">
+      <div class="gate__beam"></div>
+      <div class="gate__disc-wrap">
+        <div class="gate-disc">
+          <div class="gate-disc__grooves"></div>
+          <div class="gate-disc__sheen"></div>
+          <div class="gate-disc__label">
+            <span class="gate-disc__top">JAY CHOU</span>
+            <span class="gate-disc__cn">黑胶典藏</span>
+            <span class="gate-disc__en">THE VINYL ARCHIVE</span>
+            <span class="gate-disc__bottom">33⅓ RPM · STEREO</span>
+          </div>
+          <div class="gate-disc__hole"></div>
+        </div>
+        <div class="gate-disc__shadow"></div>
+      </div>
+    </div>
+
+    <div class="gate__content">
+      <p class="gate__eyebrow">2000 — 2026 · 16 STUDIO ALBUMS</p>
+      <h1 class="gate__title">
+        <span>周杰伦</span>
+        <em>黑胶典藏</em>
+      </h1>
+      <p class="gate__desc">十六张唱片，一间只属于耳机与夜色的听音室。<br />原创排版封面重构，黑胶音效程序合成。</p>
+      <button class="gate__enter" id="enterBtn" type="button" disabled>
+        <span class="gate__enter-line"></span>
+        <span class="gate__enter-text">正在筹备听音室</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M13 5l7 7-7 7" /></svg>
+      </button>
+      <p class="gate__note">建议开启声音 · 点击进入后播放合成黑胶底噪 · 曲目支持官方试听与本机完整版</p>
+    </div>
+
+    <div class="gate__footer">
+      <span>非官方粉丝项目</span>
+      <span>原版封面版权归原权利人 · 档案内页为原创设计</span>
+    </div>
+  </div>
+
+  <noscript><p class="noscript">需要启用 JavaScript 才能进入听音室。</p></noscript>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+node_modules/
+www/
+ios/
+build/
+Payload/
+*.ipa
+.DS_Store
+
+# 本地临时产物（不提交、不发布）
+屏幕截图*.png
+.screenshots/
+.trae-html-share-packages/
+tools/*.log

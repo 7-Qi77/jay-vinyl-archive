@@ -1,0 +1,15 @@
+{
+  "appId": "com.jayvinyl.archive",
+  "appName": "黑胶典藏",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false,
+    "backgroundColor": "#050403",
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "server": {
+    "iosScheme": "capacitor",
+    "allowNavigation": ["itunes.apple.com", "*.mzstatic.com", "lrclib.net", "*.lrclib.net"]
+  }
+}
