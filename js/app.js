@@ -114,10 +114,16 @@ const audioEl = $('localAudioEl');
 /* Apple 试听是跨域资源：Web Audio 的 MediaElementAudioSourceNode 只在 CORS 模式下出声，
    不声明 crossOrigin 时整条输出恒为 0（表现为「只有站内三首 MP3 有声音」）。 */
 audioEl.crossOrigin = 'anonymous';
-/* iOS/iPadOS 的 Web Audio 输出会被静音拨片整段掐掉，媒体元素接进去后同样静默，
-   因此 Apple 触屏设备让 <audio> 直出；桌面保留轻量黑胶音色链。 */
+/* iOS/iPadOS 的 Web Audio 默认会被静音拨片整段掐掉。
+   Safari 16.4+ 暴露 Audio Session API：在用户手势里声明 playback 后，
+   Web Audio 可以正常出声，因此支持该 API 的 Apple 设备保留完整黑胶链路；
+   旧 Safari 才退回 <audio> 直出，避免完全静默。 */
 const IS_APPLE_TOUCH = /iP(hone|ad|od)/.test(navigator.userAgent)
   || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const HAS_AUDIO_SESSION_API = (() => {
+  try { return Boolean(navigator.audioSession); } catch { return false; }
+})();
+const APPLE_WEB_AUDIO = IS_APPLE_TOUCH && HAS_AUDIO_SESSION_API;
 const immerseBtn = $('immerseBtn');
 const imxUI = $('imxUI');
 const imxTitle = $('imxTitle');
@@ -167,7 +173,10 @@ const backBtn = $('backBtn');
 const brandLink = $('brandLink');
 const canvas = $('vinylCanvas');
 
-const audio = new VinylAudio({ iosFallback: IS_APPLE_TOUCH });
+const audio = new VinylAudio({
+  iosFallback: IS_APPLE_TOUCH && !APPLE_WEB_AUDIO,
+  iosWebAudio: APPLE_WEB_AUDIO
+});
 const state = {
   view: 'crate',
   index: 0,
@@ -856,6 +865,7 @@ async function playTrack(trackIndex, { toggle = false } = {}) {
   const delay = state.scene?.spinning || deckSpinning ? 0 : 920;
   state.scene?.setPlaying(true);
   audio.setDucking(true);
+  audio.claimPlaybackSession();
   audioEl.volume = delay ? 0 : 1;
   let playback;
   try {
@@ -1778,8 +1788,9 @@ enterBtn.addEventListener('click', async () => {
   if (enterBtn.disabled || gateOpened) return;
   gateOpened = true;
   audio.unlock().catch(() => {});
-  // 本地音频接入 Web Audio：RIAA 近似倾斜 + wow/flutter + 限幅（iOS 改直出，避免静音拨片连带静默）
-  if (!IS_APPLE_TOUCH) audio.attachElement(audioEl);
+  // iOS 只有在 Audio Session 声明成功时才接入 Web Audio；否则保留 <audio> 直出兜底
+  if (!audio.iosFallback) audio.attachElement(audioEl);
+  audio.setRpm(state.rpm);
   audio.setEnabled(state.sound);
   gate.classList.add('is-open');
   document.body.classList.remove('is-gate');
@@ -1990,6 +2001,7 @@ rpmButtons.forEach((btn) => {
     });
     state.rpm = Number(btn.dataset.rpm);
     applyBaseRate();
+    audio.setRpm(state.rpm);
     state.scene?.setSpeed(state.rpm);
   });
 });

@@ -38,7 +38,9 @@ python -m http.server 8080
 ## 黑胶音频引擎
 
 - 表面噪声分 `hiss / crackle / pops / rumble / hum`，优先在 `AudioWorklet` 音频线程生成，回退到预生成立体声缓冲；不再用 7 秒 mono 循环冒充全部底噪。
-- 播放链：32Hz 高通 → RIAA 近似倾斜 → 内圈低通 → 轻饱和 → wow/flutter 延迟 → 软限幅；不使用实时 `playbackRate` 变速，也没有卷积混响。
+- 爆豆由唱片 seed 生成固定的沟槽缺陷图：同曲重播落在相同进度，内圈更密，并带引入槽 / 导出槽标记；不再逐样本随机触发。
+- 播放链：32Hz 高通 → RIAA 近似倾斜 → 内圈低通 → 轻饱和 → wow/flutter 延迟 → 软限幅；wow 与唱盘转速锁定，叠加二次旋转纹波与慢速漂移，不使用实时 `playbackRate` 变速，也没有卷积混响。
+- iPhone 上 Safari 16.4+ / iOS 17+ 通过 `navigator.audioSession.type = 'playback'` 让 Web Audio 穿过静音拨片，从而保留完整黑胶链路；旧 Safari 自动退回 `<audio>` 直出 + 独立底噪。
 - 唱片状态分「洁净 / 日常 / 磨损」，按专辑保存在本机；播放累计磨损会同步增加表面噪声。
 - 设计参考：`Riyoway/vinyl-simulator`（源码 MIT，3D 模型与视觉资产不在 MIT 范围）的状态/RIAA 思路；`gemify-tools/vinyl-scratch`（GPL-3.0-only）的噪声分层与参数思路，未复制其代码。
 

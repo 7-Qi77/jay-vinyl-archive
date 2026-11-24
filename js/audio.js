@@ -52,6 +52,8 @@ export class VinylAudio {
     this.enabled = true;
     this.started = false;
     this.iosFallback = Boolean(options.iosFallback);
+    this._iosWebAudio = Boolean(options.iosWebAudio);
+    this._iosSessionReady = false;
     this.iosNoise = null;
     this.iosStarted = false;
     this.ducking = false;
@@ -76,11 +78,41 @@ export class VinylAudio {
     this._condition = 'daily';
     this._motorGain = null;
     this._motorOsc = [];
+    this._rpm = 100 / 3;
+    this._wowLfo = null;
+    this._rippleLfo = null;
+    this._flutterLfo = null;
+    this._driftSource = null;
     this._lastNoiseError = null;
   }
 
+  /**
+   * iOS 17+ 在顶层页面允许把 Audio Session 声明为 playback，
+   * 这样 Web Audio 可以穿过静音拨片；声明失败或旧 Safari 仍走媒体元素兜底。
+   */
+  claimPlaybackSession() {
+    if (this.iosFallback) return false;
+    if (typeof navigator === 'undefined' || !navigator.audioSession) return false;
+    try {
+      if (navigator.audioSession.type !== 'playback') {
+        navigator.audioSession.type = 'playback';
+      }
+      this._iosSessionReady = navigator.audioSession.type === 'playback';
+      return this._iosSessionReady;
+    } catch {
+      this._iosSessionReady = false;
+      return false;
+    }
+  }
+
   async unlock() {
+    // 必须在用户手势内先声明播放会话，再创建 / 恢复 AudioContext
+    if (this._iosWebAudio) {
+      const claimed = this.claimPlaybackSession();
+      if (!claimed) this.iosFallback = true;
+    }
     if (this.ctx) {
+      this.claimPlaybackSession();
       if (this.ctx.state === 'suspended') await this.ctx.resume();
       return;
     }
@@ -487,6 +519,16 @@ export class VinylAudio {
     this._applyNoiseLevels();
   }
 
+  /** 与唱盘转速锁定：33⅓ 转约 0.5556Hz，45 转 0.75Hz */
+  setRpm(rpm) {
+    this._rpm = Number(rpm) === 45 ? 45 : 100 / 3;
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const base = this._rpm / 60;
+    if (this._wowLfo) this._wowLfo.frequency.setTargetAtTime(base, now, 0.2);
+    if (this._rippleLfo) this._rippleLfo.frequency.setTargetAtTime(base * 2, now, 0.2);
+  }
+
   /* ── 音频接入：RIAA 近似倾斜 + 轻饱和 + wow/flutter，不用实时变速 ── */
   attachElement(el) {
     if (!this.ctx || this._elemSrc || !this.limiter) return;
@@ -518,16 +560,44 @@ export class VinylAudio {
       warmth.curve = curve;
       warmth.oversample = 'none';
 
-      // wow + flutter：两个 LFO 叠加到同一个 15ms 延迟线
+      // wow + flutter：主 wow 与唱盘转速锁定，叠加二次旋转纹波、慢速随机漂移
+      // 和固定 flutter；全部只调制 DelayNode，不修改 playbackRate。
       const wow = this.ctx.createDelay(0.05);
       wow.delayTime.value = 0.015;
       const wowLfo = this.ctx.createOscillator();
       wowLfo.type = 'sine';
-      wowLfo.frequency.value = 0.55;
+      wowLfo.frequency.value = this._rpm / 60;
       const wowDepth = this.ctx.createGain();
       wowDepth.gain.value = 0.00028;
       wowLfo.connect(wowDepth).connect(wow.delayTime);
       wowLfo.start();
+
+      // 唱盘每转一次的二次谐波，让 wow 不再是完美正弦
+      const rippleLfo = this.ctx.createOscillator();
+      rippleLfo.type = 'sine';
+      rippleLfo.frequency.value = (this._rpm / 60) * 2;
+      const rippleDepth = this.ctx.createGain();
+      rippleDepth.gain.value = 0.000035;
+      rippleLfo.connect(rippleDepth).connect(wow.delayTime);
+      rippleLfo.start();
+
+      // 很慢的机械漂移：24 秒周期内的三个低频分量，幅度极小
+      const driftBuffer = this.ctx.createBuffer(1, 8000 * 24, 8000);
+      const driftData = driftBuffer.getChannelData(0);
+      const phase = (this._recordSeed >>> 0) % 3600 / 3600 * Math.PI * 2;
+      for (let i = 0; i < driftData.length; i++) {
+        const t = i / 8000;
+        driftData[i] = Math.sin(2 * Math.PI * t / 24 + phase) * 0.55
+          + Math.sin(2 * Math.PI * t * 2 / 24 + phase * 1.7) * 0.30
+          + Math.sin(2 * Math.PI * t * 3 / 24 + phase * 2.3) * 0.15;
+      }
+      const driftSource = this.ctx.createBufferSource();
+      driftSource.buffer = driftBuffer;
+      driftSource.loop = true;
+      const driftDepth = this.ctx.createGain();
+      driftDepth.gain.value = 0.000065;
+      driftSource.connect(driftDepth).connect(wow.delayTime);
+      driftSource.start();
 
       const flutterLfo = this.ctx.createOscillator();
       flutterLfo.type = 'sine';
@@ -537,15 +607,24 @@ export class VinylAudio {
       flutterLfo.connect(flutterDepth).connect(wow.delayTime);
       flutterLfo.start();
 
+      this._wowLfo = wowLfo;
+      this._rippleLfo = rippleLfo;
+      this._flutterLfo = flutterLfo;
+      this._driftSource = driftSource;
+
       const dry = this.ctx.createGain();
       dry.gain.value = 0.96;
 
       src.connect(hp).connect(lowShelf).connect(highShelf).connect(innerLp)
         .connect(warmth).connect(wow).connect(dry).connect(this.limiter);
-      this._music = { src, hp, lowShelf, highShelf, innerLp, warmth, wow, wowLfo, flutterLfo, dry };
+      this._music = {
+        src, hp, lowShelf, highShelf, innerLp, warmth, wow, wowLfo,
+        rippleLfo, flutterLfo, driftSource, dry
+      };
       this.musicGain = dry;
       this._elemSrc = src;
       this.setNeedleProgress(this.progress);
+      this.setRpm(this._rpm);
     } catch (err) {
       // 不支持时元素直出（iOS 静音拨片路径也走这里）
       console.info('Web Audio 播放链接入失败，使用元素直出。', err);
@@ -756,6 +835,9 @@ export class VinylAudio {
       condition: this._condition,
       wear: this._wear,
       progress: this.progress,
+      rpm: this._rpm,
+      iosFallback: this.iosFallback,
+      iosSessionReady: this._iosSessionReady,
       ducking: this.ducking,
       cue: this.cue,
       levels: this._bufferGains.crackle ? {
