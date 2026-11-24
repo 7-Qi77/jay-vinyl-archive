@@ -31,27 +31,52 @@ const safeWrite = (value) => {
 
 const sized = (art, size) => art.replace(/\/\d+x\d+bb\./, `/${size}x${size}bb.`);
 
+/* 封面与曲目表共用同一个 lookup 响应，避免首屏对同一专辑请求两次。 */
+const lookupCache = new Map(); // itunesId -> Promise<{ art, songs, tracklist }>
+
 async function lookupAlbum(id) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 9000);
+  const key = String(id);
+  if (lookupCache.has(key)) return lookupCache.get(key);
+
+  const task = (async () => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 9000);
+    try {
+      const res = await fetch(
+        `https://itunes.apple.com/lookup?id=${encodeURIComponent(id)}&entity=song&country=tw&limit=100`,
+        { signal: controller.signal, headers: { Accept: 'application/json' } }
+      );
+      if (!res.ok) throw new Error(`iTunes ${res.status}`);
+      const data = await res.json();
+      const results = data.results || [];
+      const art = results[0]?.artworkUrl100;
+      const rawSongs = results.filter((r) => r.kind === 'song' && r.trackId);
+      const songs = rawSongs.map((r) => ({ id: r.trackId, p: r.previewUrl || null, d: r.trackTimeMillis || 0 }));
+      const tracklist = rawSongs
+        .filter((r) => r.trackName)
+        .sort((a, b) => (a.trackNumber || 0) - (b.trackNumber || 0))
+        .map((s) => ({
+          name: toSimplified(s.trackName),
+          trackId: s.trackId || null,
+          previewUrl: s.previewUrl || null,
+          durationMs: s.trackTimeMillis || null
+        }));
+      return {
+        art: typeof art === 'string' && art.startsWith('https://is') ? art : null,
+        songs,
+        tracklist
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+  })();
+
+  lookupCache.set(key, task);
   try {
-    const res = await fetch(
-      `https://itunes.apple.com/lookup?id=${encodeURIComponent(id)}&entity=song&country=tw&limit=100`,
-      { signal: controller.signal, headers: { Accept: 'application/json' } }
-    );
-    if (!res.ok) throw new Error(`iTunes ${res.status}`);
-    const data = await res.json();
-    const results = data.results || [];
-    const art = results[0]?.artworkUrl100;
-    const songs = results
-      .filter((r) => r.kind === 'song' && r.trackId)
-      .map((r) => ({ id: r.trackId, p: r.previewUrl || null, d: r.trackTimeMillis || 0 }));
-    return {
-      art: typeof art === 'string' && art.startsWith('https://is') ? art : null,
-      songs
-    };
-  } finally {
-    clearTimeout(timer);
+    return await task;
+  } catch (err) {
+    lookupCache.delete(key); // 失败不留下毒缓存，下一次还可重试
+    throw err;
   }
 }
 
@@ -190,26 +215,8 @@ export function getTracklistMeta(album) {
 }
 
 async function lookupTracklist(id) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 9000);
-  try {
-    const res = await fetch(
-      `https://itunes.apple.com/lookup?id=${encodeURIComponent(id)}&entity=song&limit=64&country=tw`,
-      { signal: controller.signal, headers: { Accept: 'application/json' } }
-    );
-    if (!res.ok) throw new Error(`iTunes ${res.status}`);
-    const data = await res.json();
-    const songs = (data.results || []).filter((r) => r.kind === 'song' && r.trackName);
-    songs.sort((a, b) => (a.trackNumber || 0) - (b.trackNumber || 0));
-    return songs.map((s) => ({
-      name: toSimplified(s.trackName),
-      trackId: s.trackId || null,
-      previewUrl: s.previewUrl || null,
-      durationMs: s.trackTimeMillis || null
-    }));
-  } finally {
-    clearTimeout(timer);
-  }
+  const data = await lookupAlbum(id);
+  return Array.isArray(data.tracklist) ? data.tracklist : [];
 }
 
 export function initTracklists(albums, onReady) {

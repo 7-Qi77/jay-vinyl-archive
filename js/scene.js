@@ -690,6 +690,9 @@ function makeDustSprite() {
 
 export function createTurntable(canvas, options = {}) {
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+  const isMobile = coarsePointer || Math.min(window.innerWidth, window.innerHeight) < 720;
+  const maxDpr = isMobile ? 1.5 : 2;
   const onNeedleDrop = options.onNeedleDrop || (() => {});
   const getCoverImage = typeof options.getCoverImage === 'function' ? options.getCoverImage : null;
   const getAudioProgress =
@@ -711,11 +714,12 @@ export function createTurntable(canvas, options = {}) {
   const isPlaying = typeof options.isPlaying === 'function' ? options.isPlaying : () => false;
   const canCue = typeof options.canCue === 'function' ? options.canCue : () => true;
 
-  let dprCap = Math.min(window.devicePixelRatio || 1, 2);
+  let dprCap = Math.min(window.devicePixelRatio || 1, maxDpr);
+  let lastShadowUpdate = -1e9;
 
   const renderer = new THREE.WebGLRenderer({
     canvas,
-    antialias: true,
+    antialias: !isMobile,
     alpha: true,
     powerPreference: 'high-performance'
   });
@@ -726,6 +730,9 @@ export function createTurntable(canvas, options = {}) {
   renderer.toneMappingExposure = 1.08;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // 阴影贴图不再每帧重算：静态机台只在画面变化时按需刷新（约 12Hz 上限）。
+  renderer.shadowMap.autoUpdate = false;
+  renderer.shadowMap.needsUpdate = true;
 
   /* ── 单趟后处理：阈值 bloom + 渐晕 + 胶片颗粒（替代 CSS grain） ── */
   const rtSize = new THREE.Vector2();
@@ -777,18 +784,18 @@ export function createTurntable(canvas, options = {}) {
         vec4 base = texture2D(tScene, vUv);
         vec3 col;
 
-        // 双环 8 采样 + 亮通阈值，近似 bloom（HDR 路在线性空间取值）
+        // 双环 4 方向 8 采样 + 亮通阈值，近似 bloom（HDR 路在线性空间取值）
         const float R1 = 2.0;
         const float R2 = 5.5;
         vec3 bl = vec3(0.0);
-        for (int i = 0; i < 8; i++) {
-          float a = float(i) * 0.7853981634;
+        for (int i = 0; i < 4; i++) {
+          float a = float(i) * 1.5707963268;
           vec2 dir = vec2(cos(a), sin(a));
           vec3 s1 = texture2D(tScene, vUv + dir * uTexel * R1).rgb;
           vec3 s2 = texture2D(tScene, vUv + dir * uTexel * R2).rgb;
           bl += max(s1 - uTH, 0.0) * 0.6 + max(s2 - uTH, 0.0) * 0.4;
         }
-        bl /= 8.0;
+        bl /= 4.0;
 
         if (uHDR > 0.5) {
           // HDR：线性域加 bloom → 曝光 → ACES → sRGB
@@ -817,10 +824,10 @@ export function createTurntable(canvas, options = {}) {
 
   function ensureRT(w, h) {
     if (!rt) {
-      const hdr = renderer.capabilities.isWebGL2;
+      const hdr = renderer.capabilities.isWebGL2 && !isMobile;
       rt = new THREE.WebGLRenderTarget(w, h, {
         type: hdr ? THREE.HalfFloatType : THREE.UnsignedByteType,
-        samples: hdr ? 4 : 0
+        samples: hdr ? 2 : 0
       });
       rt.texture.colorSpace = hdr ? THREE.NoColorSpace : SRGB;
       postMat.uniforms.tScene.value = rt.texture;
@@ -843,6 +850,8 @@ export function createTurntable(canvas, options = {}) {
 
   /* ── 灯光 ─────────────────────────────────────────────── */
 
+  const shadowSize = isMobile ? 512 : 1024;
+
   scene.add(new THREE.AmbientLight(0x453829, 0.55));
   const hemi = new THREE.HemisphereLight(0x5c6a7a, 0x0a0705, 0.45);
   scene.add(hemi);
@@ -850,7 +859,7 @@ export function createTurntable(canvas, options = {}) {
   const key = new THREE.DirectionalLight(0xffd6a2, 2.6);
   key.position.set(3.6, 8.2, 4.6);
   key.castShadow = true;
-  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.mapSize.set(shadowSize, shadowSize);
   key.shadow.camera.near = 0.5;
   key.shadow.camera.far = 24;
   key.shadow.camera.left = -7;
@@ -871,13 +880,13 @@ export function createTurntable(canvas, options = {}) {
 
   const accentLight = new THREE.PointLight(0xc9a86a, 8, 8, 2);
   accentLight.position.set(-2.4, 1.8, 2.2);
-  scene.add(accentLight);
+  if (!isMobile) scene.add(accentLight);
 
   const spot = new THREE.SpotLight(0xffcf96, 240, 22, 0.52, 1, 2);
   spot.position.set(2.6, 8.4, 1.4);
   spot.target.position.set(0, 0.2, 0.2);
-  spot.castShadow = true;
-  spot.shadow.mapSize.set(2048, 2048);
+  spot.castShadow = !isMobile;
+  spot.shadow.mapSize.set(shadowSize, shadowSize);
   spot.shadow.bias = -0.0004;
   scene.add(spot);
   scene.add(spot.target);
@@ -1245,11 +1254,11 @@ export function createTurntable(canvas, options = {}) {
     depthWrite: false,
     colorWrite: false
   });
-  const armPickTube = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, ARM_LEN, 8), armPickMat);
+  const armPickTube = new THREE.Mesh(new THREE.CylinderGeometry(isMobile ? 0.3 : 0.2, isMobile ? 0.3 : 0.2, ARM_LEN, 8), armPickMat);
   armPickTube.rotation.x = Math.PI / 2;
   armPickTube.position.z = ARM_LEN / 2;
   armGroup.add(armPickTube);
-  const armPickHead = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 12), armPickMat);
+  const armPickHead = new THREE.Mesh(new THREE.SphereGeometry(isMobile ? 0.5 : 0.38, 16, 12), armPickMat);
   armPickHead.position.set(0.045, -0.06, ARM_LEN - 0.08);
   armGroup.add(armPickHead);
 
@@ -2172,6 +2181,14 @@ export function createTurntable(canvas, options = {}) {
     }
   });
 
+  // 静态几何的局部矩阵只算一次；旋转由父级 Group 承担。
+  // cueRing / contactShadow 的 transform 会在交互中变化，保留自动更新。
+  root.traverse((obj) => {
+    if (!obj.isMesh || obj === cueRing || obj === contactShadow) return;
+    obj.updateMatrix();
+    obj.matrixAutoUpdate = false;
+  });
+
   resize();
 
   function frame(now) {
@@ -2293,8 +2310,8 @@ export function createTurntable(canvas, options = {}) {
 
     // 自适应 DPR：帧时间吃紧时降档，富余时升回
     frameEMA = frameEMA * 0.94 + (dt * 1000) * 0.06;
-    const dprMax = Math.min(window.devicePixelRatio || 1, 2);
-    if (frameEMA > 21.5) {
+    const dprMax = maxDpr;
+    if (frameEMA > 28) {
       lowCount++;
       highCount = 0;
       if (lowCount > 80 && dprCap > 1.05) {
@@ -2303,7 +2320,7 @@ export function createTurntable(canvas, options = {}) {
         resize();
         lowCount = 0;
       }
-    } else if (frameEMA < 11 && dprCap < dprMax - 0.01) {
+    } else if (frameEMA < 18 && dprCap < dprMax - 0.01) {
       highCount++;
       lowCount = 0;
       if (highCount > 200) {
@@ -2317,10 +2334,16 @@ export function createTurntable(canvas, options = {}) {
       highCount = 0;
     }
 
+    // 阴影按需刷新：机台/唱臂在动时约 12Hz，避免每帧重画两张 1024 阴影图
+    if (now - lastShadowUpdate > 83) {
+      renderer.shadowMap.needsUpdate = true;
+      lastShadowUpdate = now;
+    }
+
     renderer.setRenderTarget(rt);
     renderer.render(scene, camera);
     renderer.setRenderTarget(null);
-    postMat.uniforms.uTime.value = (now % 100000) / 1000;
+    postMat.uniforms.uTime.value = reduced ? 0 : (now % 100000) / 1000;
     renderer.render(postScene, postCam);
   }
 

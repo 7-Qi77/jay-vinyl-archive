@@ -3320,7 +3320,7 @@ body.immersive .bench { display: none; }
   }
   .stage-visual {
     flex: 0 0 auto;
-    height: clamp(188px, 32svh, 264px);
+    height: clamp(240px, 38svh, 340px);
     min-height: 0;
     margin-top: 58px;
   }
@@ -3444,7 +3444,7 @@ body.immersive .bench { display: none; }
 
 /* 矮屏竖屏（iPhone SE 375/667 及更矮）：进一步压缩头部，保证曲目首屏可见 */
 @media (max-width: 900px) and (orientation: portrait) and (max-height: 640px) {
-  .stage-visual { height: clamp(146px, 26svh, 186px); margin-top: 46px; }
+  .stage-visual { height: clamp(190px, 30svh, 230px); margin-top: 46px; }
   .stage-visual .stage-sleeve { display: none; }
   .stage-kicker { display: none; }
   .stage-eyebrow, .stage-en { display: none; }
@@ -3463,3 +3463,9 @@ body.immersive .bench { display: none; }
   .gate__footer p { font-size: 7px; }
 }
 
+
+/* ── 可访问性：统一键盘焦点环（自定义组件已在局部覆盖） ── */
+:where(button, a, [tabindex]):focus-visible {
+  outline: 2px solid rgba(201, 168, 106, 0.92);
+  outline-offset: 3px;
+}

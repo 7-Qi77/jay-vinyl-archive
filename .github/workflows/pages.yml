@@ -6,8 +6,11 @@ on:
     paths:
       - 'index.html'
       - 'styles.css'
+      - 'sw.js'
+      - 'manifest.webmanifest'
       - 'js/**'
       - 'assets/**'
+      - 'tests/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -30,9 +33,26 @@ jobs:
       - name: 组装发布目录
         run: |
           mkdir -p _site
-          cp index.html styles.css _site/
+          cp index.html styles.css sw.js manifest.webmanifest _site/
           cp -R js _site/js
           cp -R assets _site/assets
+          # 源 MP3 只留在仓库归档，线上只发布转码后的 M4A，减小 Pages artifact
+          find _site/assets/audio -maxdepth 1 -type f -name '*.mp3' -delete
+
+      # 第三方组件体量大，发布前统一压缩；Pages 仍会再做 gzip。
+      - name: 压缩 vendor JS
+        run: |
+          set -euo pipefail
+          find _site/assets/vendor -type f -name '*.js' -print0 | while IFS= read -r -d '' f; do
+            npx --yes esbuild@0.25.3 "$f" --minify --outfile="$f.min" >/dev/null
+            mv "$f.min" "$f"
+          done
+
+      - name: 发布前冒烟检查
+        run: node tests/deploy-check.mjs _site
+
+      - name: 发布体积
+        run: |
           du -sh _site
           find _site -maxdepth 2 -mindepth 1 | sort
 

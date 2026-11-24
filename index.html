@@ -2,13 +2,38 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#050403" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="format-detection" content="telephone=no" />
   <title>周杰伦 · 黑胶典藏 — JAY CHOU THE VINYL ARCHIVE</title>
   <meta name="description" content="周杰伦十六张录音室专辑的黑胶沉浸式陈列。原版封面、双面封套与原创档案内页，官方试听与本机完整版播放，同步歌词，程序合成黑胶音效。" />
+  <link rel="canonical" href="https://7-Qi77.github.io/jay-vinyl-archive/" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="robots" content="index,follow" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="周杰伦 · 黑胶典藏" />
+  <meta property="og:title" content="周杰伦 · 黑胶典藏 — JAY CHOU THE VINYL ARCHIVE" />
+  <meta property="og:description" content="十六张录音室专辑，一台 3D 黑胶唱机。原版封面、同步歌词、程序合成的黑胶底噪与转速抖动。" />
+  <meta property="og:url" content="https://7-Qi77.github.io/jay-vinyl-archive/" />
+  <meta property="og:image" content="https://7-Qi77.github.io/jay-vinyl-archive/assets/social-card.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="周杰伦黑胶典藏：黑金唱片与标题" />
+  <meta property="og:locale" content="zh_CN" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="周杰伦 · 黑胶典藏" />
+  <meta name="twitter:description" content="十六张录音室专辑，一台 3D 黑胶唱机。" />
+  <meta name="twitter:image" content="https://7-Qi77.github.io/jay-vinyl-archive/assets/social-card.jpg" />
+
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-title" content="黑胶典藏" />
+  <link rel="preconnect" href="https://itunes.apple.com" crossorigin />
+  <link rel="preconnect" href="https://is1-ssl.mzstatic.com" crossorigin />
+  <link rel="preconnect" href="https://audio-ssl.itunes.apple.com" crossorigin />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230a0908' stroke='%23c9a86a' stroke-width='2'/%3E%3Ccircle cx='32' cy='32' r='10' fill='%23c9a86a'/%3E%3Ccircle cx='32' cy='32' r='3' fill='%230a0908'/%3E%3C/svg%3E" />
   <link rel="preload" href="./assets/fonts/NotoSerifSC-900.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="./styles.css" />
@@ -63,10 +88,10 @@
       <div class="crate-main">
         <div class="hero">
           <p class="eyebrow"><span class="rule"></span> A LISTENING ARCHIVE</p>
-          <h1 class="hero__title">
+          <h2 class="hero__title">
             <span class="hero__cn">黑胶</span>
             <span class="hero__cn hero__cn--indent">典藏</span>
-          </h1>
+          </h2>
           <p class="hero__en">THE VINYL<br />ARCHIVE</p>
           <p class="hero__desc">从 2000 到 2026，十六张录音室专辑。<br />按年份陈列，抽出任意一张，放上唱机。</p>
           <div class="hero__hint">
@@ -113,7 +138,7 @@
           <span class="stage-index__total">/ 16</span>
         </div>
 
-        <h2 class="stage-title" id="stageTitle">Jay</h2>
+        <h3 class="stage-title" id="stageTitle">Jay</h3>
         <p class="stage-en" id="stageEn">THE DEBUT</p>
 
         <div class="stage-meta">
@@ -165,7 +190,7 @@
       <div class="stage-visual">
         <div class="stage-visual__light" aria-hidden="true"></div>
         <div class="stage-canvas-wrap" id="canvasWrap">
-          <canvas id="vinylCanvas"></canvas>
+          <canvas id="vinylCanvas" aria-label="3D 黑胶唱机：拖拽唱臂落针，拖动唱片跳转进度"></canvas>
           <div class="stage-fallback" id="stageFallback" aria-hidden="true">
             <div class="fallback-disc"></div>
           </div>
@@ -271,7 +296,7 @@
     </section>
   </div>
 
-  <audio id="localAudioEl" preload="metadata"></audio>
+  <audio id="localAudioEl" preload="none" playsinline></audio>
 
   <!-- ───────────────────────── 沉浸模式 ───────────────────────── -->
   <div class="imx" id="imxUI" hidden aria-hidden="true">

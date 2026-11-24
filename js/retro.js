@@ -96,7 +96,7 @@ function buildBench() {
       <div class="bench__meta" id="benchMeta"></div>
       <hose-slider id="deckHose" label="播放进度" min="0" max="100" step="1" value="0"></hose-slider>
     </div>
-    <hose-toast id="benchToast" stay duration="3.2"></hose-toast>`;
+    <hose-toast id="benchToast" stay duration="3.2" role="status" aria-live="polite"></hose-toast>`;
   stage.appendChild(bench);
   const tabs = $('eraTabs');
   tabs.innerHTML = ERAS.map((e, i) => `<option value="${i}">${e.label}</option>`).join('');

@@ -2371,3 +2371,10 @@ window.addEventListener('jc-retro:seek', (e) => {
   updateAudioProgress();
   updateTimedLyric();
 });
+
+/* PWA：只在 HTTPS / localhost 注册，避免旧浏览器或 file:// 报错 */
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register(new URL('../sw.js', import.meta.url)).catch(() => {});
+  });
+}
