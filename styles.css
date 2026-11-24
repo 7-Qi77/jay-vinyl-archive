@@ -3115,8 +3115,8 @@ body.immersive .topbar * { opacity: 0; pointer-events: none !important; }
 .bench .deck-player__play:hover { color: var(--rbr); border-color: var(--rbr); }
 .bench .deck-player__play.is-playing { color: var(--rbr); border-color: var(--rbr); }
 .bench__meta { display: flex; flex-direction: column; gap: 4px; width: 152px; min-width: 0; }
-.bench .deck-player__title { color: var(--ri); }
-.bench .deck-player__title strong { font-size: 14px; color: var(--ri); }
+.bench .deck-player__title { color: var(--ri); flex-wrap: wrap; row-gap: 3px; }
+.bench .deck-player__title strong { font-size: 14px; color: var(--ri); flex: 1 1 100%; }
 .bench .deck-player__time { color: var(--ris); }
 .bench .deck-player__src { color: var(--ris); border-color: rgba(42, 33, 24, 0.4); }
 .bench .deck-player__src--local { color: var(--rbr); border-color: rgba(138, 106, 51, 0.55); }
