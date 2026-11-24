@@ -35,6 +35,13 @@ python -m http.server 8080
 - 手动导入 LRC / TXT 永远优先，可点“移除”恢复自动匹配。
 - 《手写的从前》内置纯文本歌词（lrclib 暂无该曲同步歌词）。
 
+## 黑胶音频引擎
+
+- 表面噪声分 `hiss / crackle / pops / rumble / hum`，优先在 `AudioWorklet` 音频线程生成，回退到预生成立体声缓冲；不再用 7 秒 mono 循环冒充全部底噪。
+- 播放链：32Hz 高通 → RIAA 近似倾斜 → 内圈低通 → 轻饱和 → wow/flutter 延迟 → 软限幅；不使用实时 `playbackRate` 变速，也没有卷积混响。
+- 唱片状态分「洁净 / 日常 / 磨损」，按专辑保存在本机；播放累计磨损会同步增加表面噪声。
+- 设计参考：`Riyoway/vinyl-simulator`（源码 MIT，3D 模型与视觉资产不在 MIT 范围）的状态/RIAA 思路；`gemify-tools/vinyl-scratch`（GPL-3.0-only）的噪声分层与参数思路，未复制其代码。
+
 ## 工具脚本
 
 - `tools/build-meta.py`：重新抓取 iTunes 曲目元数据（试听 URL / 时长）并匹配 lrclib 歌词 ID，生成 `assets/track-meta.json`。只存 URL 与 ID。

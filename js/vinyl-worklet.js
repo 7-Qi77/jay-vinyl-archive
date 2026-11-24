@@ -14,6 +14,10 @@ class VinylNoiseProcessor extends AudioWorkletProcessor {
     this.popR = 0;
     this.rumbleL = 0;
     this.rumbleR = 0;
+    this.hissL = 0;
+    this.hissR = 0;
+    this.hissPrevL = 0;
+    this.hissPrevR = 0;
     this.humPhase = 0;
     this.port.onmessage = (event) => {
       if (event.data?.type === 'seed') {
@@ -62,6 +66,12 @@ class VinylNoiseProcessor extends AudioWorkletProcessor {
       const whiteL = this._rng() * 2 - 1;
       const whiteR = this._rng() * 2 - 1;
 
+      // 磁带/黑胶嘶声偏高頻，先做一阶高通，避免低频“沙沙”糊住人声
+      this.hissL = 0.82 * (this.hissL + whiteL - this.hissPrevL);
+      this.hissR = 0.82 * (this.hissR + whiteR - this.hissPrevR);
+      this.hissPrevL = whiteL;
+      this.hissPrevR = whiteR;
+
       // 细碎爆豆：左右独立触发，短衰减
       if (this._rng() < 0.000085) {
         this.crackleL = (0.25 + this._rng() * 0.75) * (this._rng() > 0.5 ? 1 : -1);
@@ -93,12 +103,12 @@ class VinylNoiseProcessor extends AudioWorkletProcessor {
         + Math.sin(this.humPhase * 2) * 0.24
         + Math.sin(this.humPhase * 3) * 0.09;
 
-      let l = whiteL * hissLevel
+      let l = this.hissL * hissLevel
         + this.crackleL * crackleLevel * crackleScale
         + this.popL * crackleLevel * 0.9
         + this.rumbleL * 0.2 * rumbleLevel
         + hum * humLevel;
-      let r = whiteR * hissLevel
+      let r = this.hissR * hissLevel
         + this.crackleR * crackleLevel * crackleScale
         + this.popR * crackleLevel * 0.9
         + this.rumbleR * 0.2 * rumbleLevel
