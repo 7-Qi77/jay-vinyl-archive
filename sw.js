@@ -1,5 +1,5 @@
 /* 静态站点离线壳：只缓存同源静态资源，音频与 iTunes 接口保持网络直连。 */
-const VERSION = 'jc-vinyl-v1-20261124';
+const VERSION = 'jc-vinyl-v2-20261125';
 const CORE_CACHE = `${VERSION}-core`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 

@@ -4,7 +4,7 @@
  */
 const CACHE_KEY = 'jc-cover-urls-v3';
 const TTL = 7 * 24 * 60 * 60 * 1000;
-const STAGE_SIZE = 600;
+const STAGE_SIZE = 1000;
 const CRATE_SIZE = 300;
 
 const urlCache = new Map();

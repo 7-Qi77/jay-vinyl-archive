@@ -22,7 +22,7 @@ function canvas2d(w, h) {
 }
 
 function makeWoodTexture(renderer) {
-  const S = 512;
+  const S = 1024;
   const { c, g } = canvas2d(S, S);
 
   const base = g.createLinearGradient(0, 0, S, S);
@@ -33,28 +33,28 @@ function makeWoodTexture(renderer) {
   g.fillStyle = base;
   g.fillRect(0, 0, S, S);
 
-  for (let i = 0; i < 240; i++) {
+  for (let i = 0; i < 480; i++) {
     const x = Math.random() * S;
-    const width = Math.random() * 2.2 + 0.3;
+    const width = Math.random() * 3.4 + 0.4;
     const alpha = Math.random() * 0.09 + 0.02;
     g.strokeStyle = Math.random() > 0.45 ? `rgba(12,6,3,${alpha})` : `rgba(220,170,115,${alpha * 0.5})`;
     g.lineWidth = width;
     g.beginPath();
-    for (let y = 0; y <= S; y += 8) {
-      const waves = Math.sin(y * 0.018 + i * 0.7) * 7 + Math.sin(y * 0.052 + i) * 2.2;
+    for (let y = 0; y <= S; y += 10) {
+      const waves = Math.sin(y * 0.018 + i * 0.7) * 12 + Math.sin(y * 0.052 + i) * 3.6;
       if (y === 0) g.moveTo(x + waves, y);
       else g.lineTo(x + waves, y);
     }
     g.stroke();
   }
 
-  for (let k = 0; k < 5; k++) {
+  for (let k = 0; k < 7; k++) {
     const cx = Math.random() * S;
     const cy = Math.random() * S;
-    const rx = 4 + Math.random() * 16;
-    const ry = 10 + Math.random() * 32;
+    const rx = 6 + Math.random() * 28;
+    const ry = 14 + Math.random() * 56;
     const grd = g.createRadialGradient(cx, cy, 1, cx, cy, rx * 1.8);
-    grd.addColorStop(0, 'rgba(10,5,2,0.4)');
+    grd.addColorStop(0, 'rgba(10,5,2,0.38)');
     grd.addColorStop(1, 'rgba(10,5,2,0)');
     g.fillStyle = grd;
     g.beginPath();
@@ -66,7 +66,7 @@ function makeWoodTexture(renderer) {
   tex.colorSpace = SRGB;
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.repeat.set(1.5, 1);
-  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   return tex;
 }
 
@@ -76,7 +76,7 @@ function makeBrushedTexture(renderer) {
   g.fillStyle = '#c2ad88';
   g.fillRect(0, 0, S, S);
 
-  for (let i = 0; i < 1600; i++) {
+  for (let i = 0; i < 1800; i++) {
     const a = Math.random() * TAU;
     const r1 = Math.random() * S * 0.1;
     const r2 = S * 0.5;
@@ -88,7 +88,7 @@ function makeBrushedTexture(renderer) {
     g.stroke();
   }
   for (let r = 8; r < S * 0.5; r += 4) {
-    g.strokeStyle = `rgba(60,48,30,${Math.random() * 0.05 + 0.02})`;
+    g.strokeStyle = `rgba(60,48,30,${Math.random() * 0.045 + 0.018})`;
     g.lineWidth = 1;
     g.beginPath();
     g.arc(S / 2, S / 2, r, 0, TAU);
@@ -97,7 +97,7 @@ function makeBrushedTexture(renderer) {
 
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = SRGB;
-  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   return tex;
 }
 
@@ -162,7 +162,7 @@ function makeWearTexture(seed, wear) {
   const rnd = mulberry32(seed * 2654435761 + 7);
   const cx = S / 2;
   const cy = S / 2;
-  const labelR = S * 0.305;
+  const labelR = S * 0.222;
   const outerR = S * 0.495;
 
   // 发丝划痕：随机半径上的弧段（分段微抖动，避免完美圆弧的数字感），
@@ -172,7 +172,7 @@ function makeWearTexture(seed, wear) {
     const a0 = rnd() * TAU;
     const span = 0.06 + rnd() * (0.3 + wear * 0.55);
     const band = rnd();
-    const r = S * (band < 0.3 ? 0.42 + rnd() * 0.075 : band < 0.55 ? 0.315 + rnd() * 0.05 : 0.34 + rnd() * 0.14);
+    const r = S * (band < 0.3 ? 0.42 + rnd() * 0.07 : band < 0.55 ? 0.245 + rnd() * 0.055 : 0.31 + rnd() * 0.16);
     const light = rnd() > 0.4;
     const alpha = light ? 0.09 + rnd() * (0.13 + wear * 0.16) : 0.08 + rnd() * (0.1 + wear * 0.14);
     g.strokeStyle = light ? `rgba(255,244,222,${alpha})` : `rgba(0,0,0,${alpha})`;
@@ -195,7 +195,7 @@ function makeWearTexture(seed, wear) {
   for (let i = 0; i < gouges; i++) {
     const a0 = rnd() * TAU;
     const span = 0.18 + rnd() * 0.42;
-    const r = S * (0.33 + rnd() * 0.15);
+    const r = S * (0.25 + rnd() * 0.15);
     const lw = 1.8 + rnd() * 1.6;
     g.strokeStyle = `rgba(255,246,226,${0.2 + rnd() * 0.18})`;
     g.lineWidth = lw;
@@ -229,7 +229,7 @@ function makeWearTexture(seed, wear) {
   const scuffs = Math.round(2 + wear * 5);
   for (let i = 0; i < scuffs; i++) {
     const a = rnd() * TAU;
-    const r = S * (0.32 + rnd() * 0.17);
+    const r = S * (0.28 + rnd() * 0.17);
     const x = cx + Math.cos(a) * r;
     const y = cy + Math.sin(a) * r;
     const rr = 26 + rnd() * 60;
@@ -321,6 +321,14 @@ function makeEnvTexture(renderer) {
   g.fillStyle = strip;
   g.fillRect(0, 230, W, 70);
 
+  // 侧向柔光箱：给转盘和唱臂一条更连续的金属高光
+  const softbox = g.createLinearGradient(770, 0, 880, 0);
+  softbox.addColorStop(0, 'rgba(255,238,210,0)');
+  softbox.addColorStop(0.5, 'rgba(255,238,210,0.34)');
+  softbox.addColorStop(1, 'rgba(255,238,210,0)');
+  g.fillStyle = softbox;
+  g.fillRect(770, 52, 110, 360);
+
   const tex = new THREE.CanvasTexture(c);
   tex.mapping = THREE.EquirectangularReflectionMapping;
   tex.colorSpace = SRGB;
@@ -339,8 +347,8 @@ function makeGrooveBump(trackCount = 4) {
   const cx = S / 2;
   const cy = S / 2;
 
-  // 细密沟槽（避开引入槽 / 导出槽）
-  for (let r = S * 0.33; r < S * 0.49; r += 1.7) {
+  // 细密沟槽（从标签外缘延伸到导出槽）
+  for (let r = S * 0.242; r < S * 0.49; r += 1.7) {
     const v = 70 + Math.sin(r * 0.6) * 40 + Math.random() * 18;
     g.strokeStyle = `rgb(${v},${v},${v})`;
     g.lineWidth = 1;
@@ -360,7 +368,7 @@ function makeGrooveBump(trackCount = 4) {
   // 导出槽 / 引入槽的平滑区
   g.strokeStyle = 'rgba(40,40,40,0.5)';
   g.lineWidth = 2;
-  for (const r of [0.318, 0.324, 0.492, 0.496]) {
+  for (const r of [0.230, 0.236, 0.492, 0.496]) {
     g.beginPath();
     g.arc(cx, cy, r * S, 0, TAU);
     g.stroke();
@@ -375,7 +383,7 @@ function makeGrooveBump(trackCount = 4) {
 function grooveBandRadii(trackCount = 4) {
   const n = Math.max(1, trackCount);
   const bands = [];
-  for (let k = 1; k < n; k++) bands.push(0.33 + (0.16 * k) / n);
+  for (let k = 1; k < n; k++) bands.push(0.244 + (0.246 * k) / n);
   return bands;
 }
 
@@ -395,12 +403,19 @@ function makeLabelTexture(album, coverImage = null) {
   const cx = S / 2;
   const cy = S / 2;
   const pal = album.palette;
+  const relLum = (hex) => {
+    const h = String(hex).replace('#', '');
+    const rgb = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+    const lin = rgb.map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+  };
+  const needsAccentInk = relLum(pal.bg) < 0.44 && relLum(pal.ink) < 0.16;
 
   g.fillStyle = '#080808';
   g.fillRect(0, 0, S, S);
 
   // 跑马槽 / 锁槽
-  for (let r = S * 0.306; r < S * 0.316; r += 0.9) {
+  for (let r = S * 0.226; r < S * 0.236; r += 0.9) {
     g.strokeStyle = 'rgba(255,255,255,0.045)';
     g.lineWidth = 1;
     g.beginPath();
@@ -410,11 +425,11 @@ function makeLabelTexture(album, coverImage = null) {
   g.strokeStyle = 'rgba(0,0,0,0.7)';
   g.lineWidth = 2;
   g.beginPath();
-  g.arc(cx, cy, S * 0.312, 0, TAU);
+  g.arc(cx, cy, S * 0.232, 0, TAU);
   g.stroke();
 
   // 沟槽
-  for (let r = S * 0.33; r < S * 0.49; r += 1.6) {
+  for (let r = S * 0.242; r < S * 0.49; r += 1.6) {
     const alpha = 0.012 + Math.abs(Math.sin(r * 1.9)) * 0.02;
     g.strokeStyle = `rgba(255,255,255,${alpha})`;
     g.lineWidth = 1;
@@ -451,7 +466,7 @@ function makeLabelTexture(album, coverImage = null) {
   // 细微的径向划痕
   for (let i = 0; i < 46; i++) {
     const a = Math.random() * TAU;
-    const r1 = S * (0.33 + Math.random() * 0.12);
+    const r1 = S * (0.25 + Math.random() * 0.12);
     const r2 = r1 + S * (0.04 + Math.random() * 0.1);
     g.strokeStyle = `rgba(255,255,255,${0.012 + Math.random() * 0.03})`;
     g.lineWidth = Math.random() * 1.1;
@@ -474,93 +489,14 @@ function makeLabelTexture(album, coverImage = null) {
   g.arc(cx, cy, S * 0.487, 0, TAU);
   g.stroke();
 
-  // 中心标签
-  const R = S * 0.305;
+  // 中心标签：独立印刷标签，封面只作为小尺寸画片，不再整张圆裁
+  const R = S * 0.222;
   const serif = "'Noto Serif SC', 'Songti SC', serif";
   const sans = 'Inter, sans-serif';
   const display = "'Cormorant Garamond', Georgia, serif";
+  const ink = needsAccentInk ? pal.accent : pal.ink;
+  const accent = pal.accent;
 
-  if (coverImage) {
-    const iw = coverImage.naturalWidth;
-    const ih = coverImage.naturalHeight;
-    const side = Math.min(iw, ih);
-    const sx = (iw - side) / 2;
-    const sy = (ih - side) / 2;
-
-    g.save();
-    g.beginPath();
-    g.arc(cx, cy, R, 0, TAU);
-    g.clip();
-    g.filter = 'brightness(1.08) saturate(1.04)';
-    g.drawImage(coverImage, sx, sy, side, side, cx - R, cy - R, R * 2, R * 2);
-    g.filter = 'none';
-
-    const topShade = g.createLinearGradient(0, cy - R, 0, cy - R * 0.5);
-    topShade.addColorStop(0, 'rgba(0,0,0,0.64)');
-    topShade.addColorStop(1, 'rgba(0,0,0,0)');
-    g.fillStyle = topShade;
-    g.fillRect(cx - R, cy - R, R * 2, R * 0.6);
-
-    const bottomShade = g.createLinearGradient(0, cy + R, 0, cy + R * 0.42);
-    bottomShade.addColorStop(0, 'rgba(0,0,0,0.7)');
-    bottomShade.addColorStop(1, 'rgba(0,0,0,0)');
-    g.fillStyle = bottomShade;
-    g.fillRect(cx - R, cy + R * 0.42, R * 2, R * 0.58);
-
-    const vig = g.createRadialGradient(cx, cy, R * 0.52, cx, cy, R);
-    vig.addColorStop(0, 'rgba(0,0,0,0)');
-    vig.addColorStop(1, 'rgba(0,0,0,0.42)');
-    g.fillStyle = vig;
-    g.fillRect(cx - R, cy - R, R * 2, R * 2);
-    g.restore();
-
-    g.strokeStyle = 'rgba(8,6,4,0.55)';
-    g.lineWidth = 5;
-    g.beginPath();
-    g.arc(cx, cy, R + 1, 0, TAU);
-    g.stroke();
-    g.strokeStyle = 'rgba(255,246,228,0.76)';
-    g.lineWidth = 2;
-    g.beginPath();
-    g.arc(cx, cy, R - 4, 0, TAU);
-    g.stroke();
-    g.strokeStyle = 'rgba(255,246,228,0.3)';
-    g.lineWidth = 1;
-    g.beginPath();
-    g.arc(cx, cy, R - 12, 0, TAU);
-    g.stroke();
-
-    for (let i = 0; i < 32; i++) {
-      const a = (i / 32) * TAU;
-      g.strokeStyle = `rgba(255,246,228,${i % 4 === 0 ? 0.24 : 0.09})`;
-      g.lineWidth = 1;
-      g.beginPath();
-      g.moveTo(cx + Math.cos(a) * (R + 10), cy + Math.sin(a) * (R + 10));
-      g.lineTo(cx + Math.cos(a) * (R + 22), cy + Math.sin(a) * (R + 22));
-      g.stroke();
-    }
-
-    g.textAlign = 'center';
-    g.fillStyle = 'rgba(255,248,235,0.95)';
-    g.shadowColor = 'rgba(0,0,0,0.7)';
-    g.shadowBlur = 7;
-    g.font = `500 19px ${sans}`;
-    g.letterSpacing = '8px';
-    g.fillText('JAY CHOU', cx, cy - R + 58);
-
-    g.textAlign = 'right';
-    g.font = `400 14px ${sans}`;
-    g.letterSpacing = '3px';
-    g.fillText(`NO.${String(album.n).padStart(2, '0')}`, cx + R - 54, cy - R + 57);
-
-    g.textAlign = 'center';
-    g.globalAlpha = 0.82;
-    g.font = `400 14px ${sans}`;
-    g.letterSpacing = '5px';
-    g.fillText('SIDE A  ·  33⅓ RPM', cx, cy + R - 40);
-    g.globalAlpha = 1;
-    g.shadowBlur = 0;
-  } else {
   g.save();
   g.beginPath();
   g.arc(cx, cy, R, 0, TAU);
@@ -568,104 +504,164 @@ function makeLabelTexture(album, coverImage = null) {
 
   const lb = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
   lb.addColorStop(0, pal.bg);
-  lb.addColorStop(0.55, pal.deep);
+  lb.addColorStop(0.52, pal.deep);
   lb.addColorStop(1, pal.bg);
   g.fillStyle = lb;
   g.fillRect(cx - R, cy - R, R * 2, R * 2);
 
-  const halo = g.createRadialGradient(cx - R * 0.35, cy - R * 0.45, 10, cx, cy, R * 1.3);
-  halo.addColorStop(0, 'rgba(255,255,255,0.13)');
-  halo.addColorStop(0.55, 'rgba(255,255,255,0)');
-  halo.addColorStop(1, 'rgba(0,0,0,0.32)');
+  // 标签纸的柔光与纤维颗粒，避免纯色平涂
+  const halo = g.createRadialGradient(cx - R * 0.34, cy - R * 0.46, 6, cx, cy, R * 1.2);
+  halo.addColorStop(0, 'rgba(255,255,255,0.14)');
+  halo.addColorStop(0.52, 'rgba(255,255,255,0)');
+  halo.addColorStop(1, 'rgba(0,0,0,0.28)');
   g.fillStyle = halo;
   g.fillRect(cx - R, cy - R, R * 2, R * 2);
 
-  g.globalAlpha = 0.06;
-  g.fillStyle = pal.ink;
-  for (let i = 0; i < 2200; i++) {
-    g.fillRect(cx - R + Math.random() * R * 2, cy - R + Math.random() * R * 2, 1, 1);
+  g.globalAlpha = 0.045;
+  g.fillStyle = ink;
+  for (let i = 0; i < 900; i++) {
+    const x = cx - R + Math.random() * R * 2;
+    const y = cy - R + Math.random() * R * 2;
+    if (Math.hypot(x - cx, y - cy) > R - 2) continue;
+    g.fillRect(x, y, 1, 1);
   }
   g.globalAlpha = 1;
+
+  // 标签内侧压印边
+  g.strokeStyle = 'rgba(0,0,0,0.16)';
+  g.lineWidth = 2;
+  g.beginPath();
+  g.arc(cx, cy, R - 9, 0, TAU);
+  g.stroke();
   g.restore();
 
-  g.strokeStyle = pal.accent;
-  g.globalAlpha = 0.85;
-  g.lineWidth = 3;
+  // 锁槽、外圈与刻度
+  g.strokeStyle = 'rgba(8,6,4,0.55)';
+  g.lineWidth = 5;
   g.beginPath();
-  g.arc(cx, cy, R - 3, 0, TAU);
+  g.arc(cx, cy, R + 2, 0, TAU);
   g.stroke();
-  g.globalAlpha = 0.32;
+  g.strokeStyle = accent;
+  g.globalAlpha = 0.82;
+  g.lineWidth = 2;
+  g.beginPath();
+  g.arc(cx, cy, R - 4, 0, TAU);
+  g.stroke();
+  g.globalAlpha = 0.28;
   g.lineWidth = 1;
   g.beginPath();
-  g.arc(cx, cy, R - 14, 0, TAU);
+  g.arc(cx, cy, R - 13, 0, TAU);
   g.stroke();
   g.globalAlpha = 1;
 
-  // 标签外圈刻度
-  for (let i = 0; i < 32; i++) {
-    const a = (i / 32) * TAU;
-    g.strokeStyle = `rgba(255,255,255,${i % 4 === 0 ? 0.2 : 0.08})`;
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * TAU;
+    g.strokeStyle = `rgba(255,246,228,${i % 3 === 0 ? 0.22 : 0.08})`;
     g.lineWidth = 1;
     g.beginPath();
-    g.moveTo(cx + Math.cos(a) * (R + 10), cy + Math.sin(a) * (R + 10));
-    g.lineTo(cx + Math.cos(a) * (R + 22), cy + Math.sin(a) * (R + 22));
+    g.moveTo(cx + Math.cos(a) * (R + 8), cy + Math.sin(a) * (R + 8));
+    g.lineTo(cx + Math.cos(a) * (R + 17), cy + Math.sin(a) * (R + 17));
     g.stroke();
   }
 
-  g.textAlign = 'center';
   g.textBaseline = 'alphabetic';
-  const ink = pal.ink;
-
-  g.fillStyle = ink;
-  g.globalAlpha = 0.7;
-  g.font = `500 20px ${sans}`;
-  g.letterSpacing = '8px';
-  g.fillText('JAY CHOU', cx, cy - R + 62);
-  g.textAlign = 'right';
-  g.font = `400 15px ${sans}`;
-  g.letterSpacing = '3px';
-  g.fillText(`NO.${String(album.n).padStart(2, '0')}`, cx + R - 54, cy - R + 61);
   g.textAlign = 'center';
-  g.globalAlpha = 0.46;
-  g.font = `400 13px ${sans}`;
-  g.letterSpacing = '4px';
-  g.fillText('33⅓ RPM  ·  STEREO', cx, cy - R + 92);
-  g.globalAlpha = 1;
-
-  const titleSize = fitFont(g, album.title, R * 1.58, 92, serif, 900, 26);
   g.fillStyle = ink;
-  g.letterSpacing = '1px';
-  g.font = `900 ${titleSize}px ${serif}`;
-  g.fillText(album.title, cx, cy + 96);
-
-  const enSize = fitFont(g, album.en, R * 1.62, 19, sans, 400, 10);
-  g.globalAlpha = 0.72;
-  g.font = `400 ${enSize}px ${sans}`;
+  g.globalAlpha = 0.84;
+  g.font = `500 18px ${sans}`;
   g.letterSpacing = '4px';
-  g.fillText(album.en, cx, cy + 134);
-  g.globalAlpha = 1;
+  g.fillText('JAY CHOU', cx, cy - R + 30);
 
-  g.strokeStyle = pal.accent;
-  g.globalAlpha = 0.55;
+  g.textAlign = 'right';
+  g.globalAlpha = 0.6;
+  g.font = `400 12px ${sans}`;
+  g.letterSpacing = '2px';
+  g.fillText(`NO.${String(album.n).padStart(2, '0')}`, cx + R - 34, cy - R + 29);
+
+  g.textAlign = 'center';
+  g.globalAlpha = 0.4;
+  g.strokeStyle = accent;
   g.lineWidth = 1;
   g.beginPath();
-  g.moveTo(cx - 42, cy + 154);
-  g.lineTo(cx + 42, cy + 154);
+  g.moveTo(cx - 46, cy - R + 41);
+  g.lineTo(cx + 46, cy - R + 41);
+  g.stroke();
+
+  // 小尺寸封面画片：保留完整方形构图
+  const artSide = R * 0.76;
+  const artX = cx - artSide / 2;
+  const artY = cy - R * 0.36 - artSide / 2;
+  g.globalAlpha = 1;
+  g.fillStyle = 'rgba(0,0,0,0.28)';
+  g.fillRect(artX - 4, artY - 4, artSide + 8, artSide + 8);
+
+  if (coverImage) {
+    const iw = coverImage.naturalWidth;
+    const ih = coverImage.naturalHeight;
+    const sourceSide = Math.min(iw, ih);
+    const sx = (iw - sourceSide) / 2;
+    const sy = (ih - sourceSide) / 2;
+    g.filter = 'saturate(1.02) contrast(1.02)';
+    g.drawImage(coverImage, sx, sy, sourceSide, sourceSide, artX, artY, artSide, artSide);
+    g.filter = 'none';
+  } else {
+    g.fillStyle = accent;
+    g.fillRect(artX, artY, artSide, artSide);
+    g.fillStyle = pal.deep;
+    g.font = `400 ${Math.round(artSide * 0.3)}px ${display}`;
+    g.letterSpacing = '2px';
+    g.fillText('JC', cx, artY + artSide * 0.55);
+    g.globalAlpha = 0.62;
+    g.font = `400 ${Math.round(artSide * 0.1)}px ${sans}`;
+    g.letterSpacing = '2px';
+    g.fillText(`NO.${String(album.n).padStart(2, '0')}`, cx, artY + artSide * 0.78);
+  }
+
+  g.globalAlpha = 1;
+  g.strokeStyle = 'rgba(255,246,228,0.38)';
+  g.lineWidth = 1;
+  g.strokeRect(artX + 0.5, artY + 0.5, artSide - 1, artSide - 1);
+  g.strokeStyle = accent;
+  g.globalAlpha = 0.55;
+  g.lineWidth = 2;
+  g.strokeRect(artX - 2, artY - 2, artSide + 4, artSide + 4);
+  g.globalAlpha = 1;
+
+  // 标题与档案信息
+  const titleSize = fitFont(g, album.title, R * 1.82, 56, serif, 900, 18);
+  g.fillStyle = ink;
+  g.globalAlpha = 0.94;
+  g.font = `900 ${titleSize}px ${serif}`;
+  g.letterSpacing = '0.5px';
+  g.fillText(album.title, cx, cy + R * 0.44);
+
+  const enSize = fitFont(g, album.en, R * 1.76, 15, sans, 400, 7);
+  g.globalAlpha = 0.66;
+  g.font = `400 ${enSize}px ${sans}`;
+  g.letterSpacing = '2.4px';
+  g.fillText(album.en, cx, cy + R * 0.57);
+
+  g.strokeStyle = accent;
+  g.globalAlpha = 0.45;
+  g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(cx - 34, cy + R * 0.64);
+  g.lineTo(cx + 34, cy + R * 0.64);
   g.stroke();
   g.globalAlpha = 1;
 
   g.fillStyle = ink;
-  g.globalAlpha = 0.9;
-  g.font = `400 38px ${display}`;
-  g.letterSpacing = '6px';
-  g.fillText(String(album.year), cx, cy + 214);
+  g.globalAlpha = 0.82;
+  g.font = `400 ${Math.round(R * 0.14)}px ${display}`;
+  g.letterSpacing = '3px';
+  g.fillText(String(album.year), cx, cy + R * 0.77);
 
   g.globalAlpha = 0.55;
-  g.font = `400 14px ${sans}`;
-  g.letterSpacing = '5px';
-  g.fillText('SIDE A  ·  33⅓ RPM', cx, cy + 252);
+  g.font = `400 ${Math.round(R * 0.052)}px ${sans}`;
+  g.letterSpacing = '2.4px';
+  g.fillText('SIDE A  ·  33⅓ RPM', cx, cy + R - 21);
   g.globalAlpha = 1;
-  }
+  g.shadowBlur = 0;
 
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = SRGB;
@@ -899,9 +895,9 @@ export function createTurntable(canvas, options = {}) {
   const woodTex = makeWoodTexture(renderer);
   const woodMat = new THREE.MeshStandardMaterial({
     map: woodTex,
-    roughness: 0.52,
-    metalness: 0.08,
-    envMapIntensity: 0.55
+    roughness: 0.46,
+    metalness: 0.05,
+    envMapIntensity: 0.58
   });
 
   const PLINTH_W = 6.6;
@@ -920,14 +916,14 @@ export function createTurntable(canvas, options = {}) {
   const brassMat = new THREE.MeshStandardMaterial({
     color: 0xc7a56b,
     metalness: 1,
-    roughness: 0.28,
+    roughness: 0.24,
     envMapIntensity: 1.35
   });
   const darkMetalMat = new THREE.MeshStandardMaterial({
     color: 0x1a1917,
-    metalness: 0.75,
-    roughness: 0.36,
-    envMapIntensity: 0.8
+    metalness: 0.78,
+    roughness: 0.34,
+    envMapIntensity: 0.82
   });
 
   // 机脚
@@ -952,12 +948,13 @@ export function createTurntable(canvas, options = {}) {
   root.add(plate);
 
   // 转盘
+  const brushedTex = makeBrushedTexture(renderer);
   const platterMat = new THREE.MeshStandardMaterial({
-    map: makeBrushedTexture(renderer),
+    map: brushedTex,
     color: 0x8f7d5e,
-    metalness: 0.9,
-    roughness: 0.36,
-    envMapIntensity: 0.95
+    metalness: 0.92,
+    roughness: 0.3,
+    envMapIntensity: 1.05
   });
   // 转盘组：盘体 + 黄铜圈 + 毡垫 + 频闪测速点，与唱片同速旋转
   const platterGroup = new THREE.Group();
@@ -1035,8 +1032,13 @@ export function createTurntable(canvas, options = {}) {
   disc.position.y = 0.735;
   recordGroup.add(disc);
 
-  const spindle = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.045, 0.24, 24), brassMat);
-  spindle.position.y = 0.83;
+  const spindleMat = new THREE.MeshStandardMaterial({
+    color: 0xcfc3ac,
+    metalness: 0.92,
+    roughness: 0.2
+  });
+  const spindle = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.03, 0.13, 20), spindleMat);
+  spindle.position.y = 0.8;
   spindle.castShadow = true;
   root.add(spindle);
 
@@ -1115,7 +1117,7 @@ export function createTurntable(canvas, options = {}) {
         float scratches = 0.93 + 0.07 * sin(ang * 7.0 + uSpin) * sin(ang * 13.0 - uSpin * 0.5);
 
         // 播放区掩码：纸标签外 → 引入槽内
-        float mask = smoothstep(0.62, 0.66, r) * (1.0 - smoothstep(0.96, 0.995, r));
+        float mask = smoothstep(0.46, 0.50, r) * (1.0 - smoothstep(0.96, 0.995, r));
         // 分轨宽槽处高光断开
         for (int i = 0; i < 6; i++) {
           if (i >= uBandCount) break;
@@ -1467,7 +1469,7 @@ export function createTurntable(canvas, options = {}) {
     return (lo + hi) / 2;
   }
   const PLAY_ANGLE = angleForRadius(2.12); // 引入槽
-  const INNER_ANGLE = angleForRadius(0.88); // 导出槽
+  const INNER_ANGLE = angleForRadius(1.09); // 导出槽，落在小标签外缘
   let trackProgress = 0;
   const angleForProgress = (p) => PLAY_ANGLE + (INNER_ANGLE - PLAY_ANGLE) * clamp(p, 0, 1);
 
@@ -1574,7 +1576,7 @@ export function createTurntable(canvas, options = {}) {
 
     if (discTex) discTex.dispose();
     discTex = makeLabelTexture(album, usable ? cover : null);
-    discTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    discTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
     discTopMat.map = discTex;
     discTopMat.needsUpdate = true;
 
@@ -1893,7 +1895,7 @@ export function createTurntable(canvas, options = {}) {
   const ray = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   const OUTER_R = 2.12; // 引入槽半径（与唱臂几何一致）
-  const INNER_R = 0.88; // 导出槽半径
+  const INNER_R = 1.09; // 导出槽半径，与小标签外缘一致
 
   const discProgress = (e) => {
     const rect = canvas.getBoundingClientRect();
