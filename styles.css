@@ -3417,10 +3417,11 @@ body.immersive .bench { display: none; }
 
 /* 矮屏竖屏（iPhone SE 375/667 及更矮）：进一步压缩头部，保证曲目首屏可见 */
 @media (max-width: 900px) and (orientation: portrait) and (max-height: 640px) {
-  .stage-visual { height: clamp(168px, 29svh, 210px); margin-top: 52px; }
+  .stage-visual { height: clamp(146px, 26svh, 186px); margin-top: 46px; }
+  .stage-visual .stage-sleeve { display: none; }
   .stage-kicker { display: none; }
   .stage-eyebrow, .stage-en { display: none; }
-  .stage-title { font-size: clamp(26px, 8vw, 34px); }
+  .stage-title { font-size: clamp(24px, 7vw, 31px); }
   .stage-desc { margin-top: 6px; -webkit-line-clamp: 2; }
   .stage-meta { margin-top: 5px; }
   .stage-tracks { margin-top: 8px; }
