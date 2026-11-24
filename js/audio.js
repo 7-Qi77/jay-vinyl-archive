@@ -14,7 +14,11 @@ export class VinylAudio {
     this._noiseBuffer = null;
     this.iosFallback = Boolean(options.iosFallback);
     this.iosNoise = null;
+    this.iosStarted = false;
+    this.ducking = false;
     this._iosNoiseUrl = null;
+    this._wowDelay = null;
+    this._wowLfo = null;
   }
 
   async unlock() {
@@ -25,7 +29,8 @@ export class VinylAudio {
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return;
 
-    this.ctx = new Ctx();
+    // playback 缓冲更从容，避免主线程忙时出现 underrun 式的断续
+    this.ctx = new Ctx({ latencyHint: 'playback' });
     this.master = this.ctx.createGain();
     this.master.gain.value = this.enabled ? 0.9 : 0;
     this.master.connect(this.ctx.destination);
@@ -39,9 +44,13 @@ export class VinylAudio {
   setEnabled(on) {
     this.enabled = on;
     if (this.iosNoise) {
-      this.iosNoise.volume = on ? 0.05 : 0;
-      if (on) this.iosNoise.play().catch(() => {});
-      else this.iosNoise.pause();
+      if (!on) {
+        this.iosNoise.pause();
+        this.iosNoise.volume = 0;
+      } else if (!this.ducking && this.iosStarted) {
+        this.iosNoise.volume = 0.07;
+        if (this.iosNoise.paused) this.iosNoise.play().catch(() => {});
+      }
     }
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
@@ -49,17 +58,36 @@ export class VinylAudio {
     this.master.gain.setTargetAtTime(on ? 0.9 : 0, now, 0.08);
   }
 
-  /** 音乐播放时压低底噪，让原曲浮出来 */
+  /** 音乐播放状态：播放时压低底噪；iOS 播放时暂停独立底噪，避免双音频抢会话 */
   setDucking(on) {
+    this.ducking = Boolean(on);
     if (this.iosNoise) {
-      this.iosNoise.volume = on ? 0.05 : 0.08;
-      if (on && this.enabled) this.iosNoise.play().catch(() => {});
+      if (on) {
+        this.iosNoise.pause();
+        this.iosNoise.volume = 0;
+      } else if (this.enabled) {
+        this.iosStarted = true;
+        this.iosNoise.volume = 0.07;
+        this.iosNoise.play().catch(() => {});
+      }
     }
     if (!this.ctx || !this.crackleGain) return;
     const now = this.ctx.currentTime;
-    this.crackleGain.gain.setTargetAtTime(on ? 0.032 : 0.06, now, 0.3);
-    if (this.hissGain) this.hissGain.gain.setTargetAtTime(on ? 0.006 : 0.012, now, 0.3);
-    if (this.rumbleGain) this.rumbleGain.gain.setTargetAtTime(on ? 0.22 : 0.5, now, 0.3);
+    this.crackleGain.gain.setTargetAtTime(on ? 0.028 : 0.05, now, 0.3);
+    if (this.hissGain) this.hissGain.gain.setTargetAtTime(on ? 0.0045 : 0.009, now, 0.3);
+    if (this.rumbleGain) this.rumbleGain.gain.setTargetAtTime(on ? 0.2 : 0.4, now, 0.3);
+  }
+
+  /** 手动 cue：只抬高沟槽噪声，不改变音乐播放状态 */
+  setCue(on) {
+    if (!this.ctx || !this.crackleGain) return;
+    const now = this.ctx.currentTime;
+    const crackle = on ? 0.044 : this.ducking ? 0.028 : 0.05;
+    const hiss = on ? 0.008 : this.ducking ? 0.0045 : 0.009;
+    const rumble = on ? 0.28 : this.ducking ? 0.2 : 0.4;
+    this.crackleGain.gain.setTargetAtTime(crackle, now, 0.2);
+    if (this.hissGain) this.hissGain.gain.setTargetAtTime(hiss, now, 0.2);
+    if (this.rumbleGain) this.rumbleGain.gain.setTargetAtTime(rumble, now, 0.2);
   }
 
   /* ── 连续底噪 ─────────────────────────────────────────── */
@@ -81,7 +109,7 @@ export class VinylAudio {
     lp.frequency.value = 6800;
 
     const gain = ctx.createGain();
-    gain.gain.value = 0.055;
+    gain.gain.value = 0.05;
     this.crackleGain = gain;
 
     src.connect(hp).connect(lp).connect(gain).connect(this.master);
@@ -96,7 +124,7 @@ export class VinylAudio {
     hissBp.frequency.value = 10500;
     hissBp.Q.value = 0.55;
     const hissGain = ctx.createGain();
-    hissGain.gain.value = 0.01;
+    hissGain.gain.value = 0.009;
     this.hissGain = hissGain;
     hiss.connect(hissBp).connect(hissGain).connect(this.master);
     hiss.start();
@@ -109,7 +137,7 @@ export class VinylAudio {
     rumbleLp.type = 'lowpass';
     rumbleLp.frequency.value = 140;
     const rumbleGain = ctx.createGain();
-    rumbleGain.gain.value = 0.5;
+    rumbleGain.gain.value = 0.4;
     this.rumbleGain = rumbleGain;
     rumble.connect(rumbleLp).connect(rumbleGain).connect(this.master);
     rumble.start();
@@ -284,16 +312,16 @@ export class VinylAudio {
     if (!this.ctx || !this.crackleGain) return;
     const v = Math.min(1, Math.max(0, p || 0));
     const now = this.ctx.currentTime;
-    this.crackleGain.gain.setTargetAtTime(0.032 + v * 0.03, now, 0.4);
-    if (this.hissGain) this.hissGain.gain.setTargetAtTime(0.006 + v * 0.004, now, 0.4);
+    this.crackleGain.gain.setTargetAtTime(0.028 + v * 0.028, now, 0.4);
+    if (this.hissGain) this.hissGain.gain.setTargetAtTime(0.0045 + v * 0.003, now, 0.4);
   }
 
-  /* ── 本地音频接入：干湿两路 + 生成式房间混响 ──────────── */
+  /* ── 音频接入：暖色频响 + 轻饱和 + 慢速延迟起伏，不用实时变速 ── */
   attachElement(el) {
     if (!this.ctx || this._elemSrc) return;
     try {
       const src = this.ctx.createMediaElementSource(el);
-      // 黑胶化：去超低频、轻收高频、极轻饱和，保留原曲清晰度
+      // 去超低频、轻收高频，保留原曲清晰度
       const hp = this.ctx.createBiquadFilter();
       hp.type = 'highpass';
       hp.frequency.value = 30;
@@ -306,38 +334,33 @@ export class VinylAudio {
       const curve = new Float32Array(1024);
       for (let i = 0; i < curve.length; i++) {
         const x = (i / (curve.length - 1)) * 2 - 1;
-        curve[i] = Math.tanh(x * 1.1) / 1.1;
+        curve[i] = Math.tanh(x * 1.05) / 1.05;
       }
       warmth.curve = curve;
-      warmth.oversample = '2x';
+      warmth.oversample = 'none';
+
+      // 轻微 wow：慢速 LFO 调制 12ms 延迟，替代反复改 playbackRate
+      const wow = this.ctx.createDelay(0.05);
+      wow.delayTime.value = 0.012;
+      const wowLfo = this.ctx.createOscillator();
+      wowLfo.type = 'sine';
+      wowLfo.frequency.value = 0.55;
+      const wowDepth = this.ctx.createGain();
+      wowDepth.gain.value = 0.00035;
+      wowLfo.connect(wowDepth).connect(wow.delayTime);
+      wowLfo.start();
+      this._wowDelay = wow;
+      this._wowLfo = wowLfo;
 
       const dry = this.ctx.createGain();
-      dry.gain.value = 0.94;
-      const wet = this.ctx.createGain();
-      wet.gain.value = 0.12;
-      const conv = this.ctx.createConvolver();
-      conv.buffer = this._buildRoomIR(1.7, 2.6);
+      dry.gain.value = 0.96;
 
-      src.connect(hp).connect(lp).connect(warmth);
-      warmth.connect(dry).connect(this.master);
-      warmth.connect(conv).connect(wet).connect(this.master);
+      src.connect(hp).connect(lp).connect(warmth).connect(wow).connect(dry).connect(this.master);
+      this.musicGain = dry;
       this._elemSrc = src;
     } catch {
       /* 不支持时元素直出 */
     }
-  }
-
-  _buildRoomIR(seconds, decay) {
-    const rate = this.ctx.sampleRate;
-    const len = Math.max(1, Math.floor(rate * seconds));
-    const buf = this.ctx.createBuffer(2, len, rate);
-    for (let ch = 0; ch < 2; ch++) {
-      const d = buf.getChannelData(ch);
-      for (let i = 0; i < len; i++) {
-        d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
-      }
-    }
-    return buf;
   }
 
   /* ── iOS 兜底底噪：Web Audio 会被静音拨片整体静音，改走独立 <audio> ── */
@@ -351,7 +374,7 @@ export class VinylAudio {
     el.setAttribute('playsinline', '');
     el.setAttribute('aria-hidden', 'true');
     el.src = this._iosNoiseUrl;
-    el.volume = 0.05;
+    el.volume = 0;
     el.style.display = 'none';
     document.body.appendChild(el);
     this.iosNoise = el;

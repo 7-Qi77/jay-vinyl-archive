@@ -602,23 +602,9 @@ function applyBaseRate() {
   }
 }
 
-let wobbleTimer = 0;
-function startWobble() {
-  stopWobble();
-  wobbleTimer = setInterval(() => {
-    if (audioEl.paused || audioEl.ended) return;
-    const t = performance.now() / 1000;
-    // ±0.2% 量级的转速起伏
-    const wobble = 1 + 0.0021 * Math.sin(t * 2.7) + 0.0012 * Math.sin(t * 6.9 + 1.2);
-    audioEl.playbackRate = BASE_RATE() * wobble;
-  }, 140);
-}
-function stopWobble() {
-  if (wobbleTimer) {
-    clearInterval(wobbleTimer);
-    wobbleTimer = 0;
-  }
-}
+/* 注：不做周期性 playbackRate 变速。HTML 音频反复改速率会不断重采样，
+   在 MediaElementSource 链上容易造成周期性卡顿；黑胶的轻微起伏改由
+   audio.js 里的慢速 Delay LFO 完成，画面摆动不受影响。 */
 
 /* ── 唱片磨损：累计播放秒数 → 伤痕贴花增长（收藏感） ─────── */
 const WEAR_FULL_SECONDS = 2400;
@@ -1386,7 +1372,7 @@ function ensureScene() {
         };
         audio.playArmLift();
         if (!audioEl.paused) rampVolume(0.25, 180);
-        audio.setDucking(false);
+        audio.setCue(true);
         cursor.classList.add('is-hover');
         cursorLabel.textContent = '拖动唱臂 · 松开落针';
       },
@@ -1412,6 +1398,7 @@ function ensureScene() {
           updateTimedLyric();
         }
         rampVolume(1, 180);
+        audio.setCue(false);
         audio.setDucking(snap ? snap.wasPlaying : false);
         cursor.classList.remove('is-hover');
         cursorLabel.textContent = '';
@@ -1419,6 +1406,7 @@ function ensureScene() {
       onCueCancel: () => {
         cueSnapshot = null;
         rampVolume(1, 180);
+        audio.setCue(false);
         audio.setDucking(!audioEl.paused);
         cursor.classList.remove('is-hover');
         cursorLabel.textContent = '';
@@ -1909,13 +1897,11 @@ audioEl.addEventListener('durationchange', updateAudioProgress);
 audioEl.addEventListener('play', () => {
   deckSpinning = true;
   applyBaseRate();
-  startWobble();
   updateAudioUI();
   state.scene?.setPlaying(true);
 });
 audioEl.addEventListener('pause', () => {
   deckSpinning = false;
-  stopWobble();
   updateAudioUI();
 });
 audioEl.addEventListener('ended', () => {
