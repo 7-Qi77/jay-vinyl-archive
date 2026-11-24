@@ -144,9 +144,10 @@ class PixelRoom extends HTMLElement {
         const dy = 36 + ((i * 9 + Math.floor(t * 3)) % 30);
         k.rc(dx, dy, 1, 1, i % 2 ? '#fbe88a' : '#8fa3c4');
       }
-      const title = (st.titleEn || '').slice(0, 18);
+      const title = (st.titleEn || '').slice(0, 26);
+      const pct = `${Math.round(st.progress * 100)}%`;
       k.ptext(title, 8, 99, '#8fa3c4');
-      k.ptext(`${Math.round(st.progress * 100)}%`, 168, 99, st.playing ? '#fbe88a' : '#54688c');
+      k.ptext(pct, 172 - k.ptextW(pct), 99, st.playing ? '#fbe88a' : '#54688c');
     });
     const v = this.canvas.getContext('2d');
     v.imageSmoothingEnabled = false;

@@ -3248,3 +3248,190 @@ body.immersive .bench { display: none; }
   .deck-player__time { display: none; }
   .spine-rail-wrap { height: 72px; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   移动端适配 v2（竖屏 ≤900）：舞台改为「画面固定 + 文案内滚 + 控制台常驻」
+   原来整页滚动时纸面 bench 会跟着滚出屏幕，并把曲目表压在下层
+   ════════════════════════════════════════════════════════════ */
+@media (max-width: 900px) and (orientation: portrait) {
+  :root {
+    --bench-h: 130px;
+    --bench-h-safe: calc(var(--bench-h) + env(safe-area-inset-bottom, 0px));
+  }
+
+  button, .track, .crate-item, a {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 顶栏：接近 44pt 的可点区域，品牌收窄 */
+  .topbar {
+    height: 58px;
+    padding-left: calc(14px + env(safe-area-inset-left, 0px));
+    padding-right: calc(14px + env(safe-area-inset-right, 0px));
+  }
+  .topbar .icon-btn { width: 42px; height: 42px; }
+  .topbar .icon-btn svg { width: 18px; height: 18px; }
+  .brand__mark { width: 32px; height: 32px; font-size: 12px; }
+  .brand__text strong { font-size: 10.5px; letter-spacing: 0.2em; }
+
+  /* 唱片柜：压缩头部，把首屏让给封面 */
+  .crate-main { padding: 72px clamp(14px, 4vw, 24px) calc(40px + env(safe-area-inset-bottom, 0px)); }
+  .hero { margin-bottom: 16px; }
+  .hero__title { font-size: clamp(32px, 9vw, 44px); line-height: 1.04; }
+  .hero__desc { margin-top: 12px; font-size: 11.5px; }
+  .hero__hint { margin-top: 12px; }
+  .cabinet { padding: 12px 12px 10px; }
+  .crate-footer { margin-top: 18px; }
+
+  /* 舞台：控制台常驻，文案区自己滚 */
+  .view--stage {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: var(--bench-h-safe);
+  }
+  .stage-visual {
+    flex: 0 0 auto;
+    height: clamp(188px, 32svh, 264px);
+    min-height: 0;
+    margin-top: 58px;
+  }
+  .stage-canvas-wrap { top: 0; height: 100%; }
+  .stage-sleeve {
+    left: 4vw;
+    right: auto;
+    top: 6px;
+    bottom: auto;
+    width: clamp(76px, 19vw, 104px);
+  }
+  /* 移动端把「翻面」收成角标圆钮，避免盖住封面 */
+  .stage-sleeve__flip {
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    gap: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  .stage-sleeve__flip svg { width: 12px; height: 12px; }
+  .stage-sleeve__flip span { display: none; }
+  .stage-copy {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px clamp(18px, 4.5vw, 26px) 20px;
+    order: 2;
+  }
+  .stage-copy::-webkit-scrollbar { width: 0; height: 0; }
+  .stage-kicker { font-size: 8px; letter-spacing: 0.2em; }
+  .stage-index { margin-top: 2px; }
+  .stage-index__num { font-size: 30px; line-height: 1.1; }
+  .stage-title { font-size: clamp(28px, 7.6vw, 38px); }
+  .stage-en { margin-top: 3px; font-size: 9px; letter-spacing: 0.24em; }
+  .stage-meta { margin-top: 7px; font-size: 8.5px; gap: 6px; }
+  .stage-desc {
+    margin-top: 8px;
+    font-size: 11.5px;
+    line-height: 1.8;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .stage-tracks { margin-top: 10px; }
+  .stage-tracks__head { padding: 8px 0 6px; }
+  .track { min-height: 46px; padding: 10px 0; gap: 10px; }
+  .track__name { font-size: 13.5px; }
+  .track__num { font-size: 10px; }
+  .track__src { font-size: 8px; padding: 2px 5px; }
+  .track__lyric { width: 30px; height: 26px; font-size: 9px; }
+  .track__eq { display: none; }
+  .memory__toggle { min-height: 40px; }
+  .stage-nav { margin-top: 14px; padding-bottom: 4px; }
+  .spine-rail-wrap { display: none; }
+
+  /* 纸面控制台：高度随安全区扩展，控件放大 */
+  .bench {
+    height: var(--bench-h-safe);
+    padding: 6px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+  }
+  .bench__deck { gap: 8px; }
+  .bench .deck-player__play { width: 44px; height: 44px; }
+  .bench .deck-player__btn { width: 34px; height: 34px; }
+  .bench__meta { width: 96px; }
+  .bench hose-slider { width: 118px; }
+
+  /* 歌词内页：铺满 + 安全区 */
+  .lyrics { padding: 0; }
+  .lyrics__sheet { height: 100dvh; }
+  .lyrics__side {
+    padding-top: calc(46px + env(safe-area-inset-top, 0px));
+    padding-bottom: 12px;
+  }
+  .lyrics__page {
+    min-height: 0;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  }
+  .lyrics__audio { padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
+
+  /* 内页侧栏：纸面导入区横跨整行，危险操作（长按清除）留给桌面 */
+  .lyrics__side {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 8px 12px;
+    padding: 42px 16px 10px;
+  }
+  .lyrics__cover { width: 64px; padding: 5px; }
+  .lyrics__heading h3 { font-size: 20px; }
+  .sheet-retro-foot {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    margin-top: 8px;
+  }
+  .sheet-retro-import hose-button { width: 72px; }
+  .sheet-retro-foot .sheet-retro-clear { display: none; }
+  .lyrics__audio hose-progress { width: 128px; }
+
+  /* 像素听音室：竖屏按宽度等比缩放居中（避免 16:9 画面被横向裁掉标题） */
+  #pixelRoom { background: #07080e; }
+  #pixelRoom canvas {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: auto;
+    transform: translateY(-50%);
+    image-rendering: pixelated;
+  }
+}
+
+/* 矮屏竖屏（iPhone SE 375/667 及更矮）：进一步压缩头部，保证曲目首屏可见 */
+@media (max-width: 900px) and (orientation: portrait) and (max-height: 640px) {
+  .stage-visual { height: clamp(168px, 29svh, 210px); margin-top: 52px; }
+  .stage-kicker { display: none; }
+  .stage-eyebrow, .stage-en { display: none; }
+  .stage-title { font-size: clamp(26px, 8vw, 34px); }
+  .stage-desc { margin-top: 6px; -webkit-line-clamp: 2; }
+  .stage-meta { margin-top: 5px; }
+  .stage-tracks { margin-top: 8px; }
+  .track { min-height: 44px; padding: 8px 0; }
+}
+
+/* 超窄屏（iPhone SE 320pt / 旧机型）：只留唱片标，避免顶栏挤爆 */
+@media (max-width: 380px) {
+  .brand__text { display: none; }
+  .topbar .icon-btn { width: 40px; height: 40px; }
+  .rack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gate__footer p { font-size: 7px; }
+}
+

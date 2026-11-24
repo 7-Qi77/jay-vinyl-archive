@@ -111,6 +111,13 @@ const lyricsAudioProgress = $('lyricsAudioProgress');
 const lyricsAudioTime = $('lyricsAudioTime');
 const lyricsAudioFile = $('lyricsAudioFile');
 const audioEl = $('localAudioEl');
+/* Apple 试听是跨域资源：Web Audio 的 MediaElementAudioSourceNode 只在 CORS 模式下出声，
+   不声明 crossOrigin 时整条输出恒为 0（表现为「只有站内三首 MP3 有声音」）。 */
+audioEl.crossOrigin = 'anonymous';
+/* iOS/iPadOS 的 Web Audio 输出会被静音拨片整段掐掉，媒体元素接进去后同样静默，
+   因此 Apple 触屏设备让 <audio> 直出；桌面保留干湿两路与房间混响。 */
+const IS_APPLE_TOUCH = /iP(hone|ad|od)/.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const immerseBtn = $('immerseBtn');
 const imxUI = $('imxUI');
 const imxTitle = $('imxTitle');
@@ -735,6 +742,7 @@ function updateAudioProgress() {
 
 function pausePlayback() {
   if (!audioEl.paused) audioEl.pause();
+  audioEl.volume = 1;
   deckSpinning = false;
   state.scene?.setPlaying(false);
   audio.setDucking(false);
@@ -744,6 +752,7 @@ function pausePlayback() {
 function stopPlayback() {
   playToken++;
   if (!audioEl.paused) audioEl.pause();
+  audioEl.volume = 1;
   audioEl.removeAttribute('src');
   audioEl.load();
   activeAudioKey = null;
@@ -792,16 +801,31 @@ async function playTrack(trackIndex, { toggle = false } = {}) {
   updateImxInfo();
   updateAudioUI();
 
-  // 唱臂在休息位时，等落针再出声；已在转则直接播
+  // 唱臂在休息位时，等落针再出声；但 play() 必须在点击的同一任务里发起，
+  // 否则 iOS / Safari 判定为无手势直接拒绝（延迟用音量淡入来补，视觉节奏不变）
   const delay = state.scene?.spinning || deckSpinning ? 0 : 920;
   state.scene?.setPlaying(true);
   audio.setDucking(true);
+  audioEl.volume = delay ? 0 : 1;
+  let playback;
   try {
-    if (delay) await wait(delay);
-    if (token !== playToken || activeAudioKey !== key) return;
-    await audioEl.play();
+    playback = audioEl.play();
+  } catch (err) {
+    playback = Promise.reject(err);
+  }
+  if (delay) {
+    wait(delay).then(() => {
+      if (token === playToken && activeAudioKey === key) audioEl.volume = 1;
+    });
+  }
+  try {
+    await playback;
   } catch {
-    if (token === playToken) showLyricStatus('浏览器阻止了播放，请再点一次', true);
+    audioEl.volume = 1;
+    if (token === playToken) {
+      showLyricStatus('浏览器拦住了播放，请再点一下播放键', true);
+      emit('jc:notify', { zh: '再点一下播放键即可出声', en: 'TAP TO PLAY' });
+    }
   }
   updateAudioUI();
   updateTimedLyric();
@@ -1641,8 +1665,8 @@ enterBtn.addEventListener('click', async () => {
   if (enterBtn.disabled || gateOpened) return;
   gateOpened = true;
   audio.unlock().catch(() => {});
-  // 本地音频接入 Web Audio：干湿两路 + 生成式房间混响
-  audio.attachElement(audioEl);
+  // 本地音频接入 Web Audio：干湿两路 + 生成式房间混响（iOS 改直出，避免静音拨片连带静默）
+  if (!IS_APPLE_TOUCH) audio.attachElement(audioEl);
   audio.setEnabled(state.sound);
   gate.classList.add('is-open');
   document.body.classList.remove('is-gate');
