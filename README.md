@@ -13,6 +13,14 @@ python -m http.server 8080
 
 浏览器打开 http://localhost:8080 。
 
+## 线上部署
+
+- 站点：https://7-Qi77.github.io/jay-vinyl-archive/
+- 仓库：https://github.com/7-Qi77/jay-vinyl-archive （公共仓库 + GitHub Pages 免费额度）
+- 发布流程：`.github/workflows/pages.yml` 只把 `index.html`、`styles.css`、`js/`、`assets/` 装进 `_site` 再上传，`tools/`、`tests/`、`scripts/`、`README.md` 不在线上暴露。
+- 更新：改完执行 `git add -A && git commit -m "..." && git push`，推送到 `main` 后约 1 分钟自动重建。
+- 注意：`assets/audio/*.mp3` 随公开仓库一起发布，任何访客都可直接下载，仅适合非商业粉丝用途；`*.github.io` 在部分网络下较慢，可后续绑定自有域名改善。
+
 ## 音频来源（三层）
 
 1. **本机导入**：歌词内页“放入本地音频 / 批量导入”，或直接拖拽文件。按文件名匹配曲目，保存在浏览器 IndexedDB，刷新后仍在。
