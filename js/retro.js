@@ -3,8 +3,11 @@
  * 所有控件复用 app.js 既有节点（reparent），事件单一来源；本模块只监听 / 派发 window 事件。
  * 版权：两库均 MIT，见 assets/vendor 下各 LICENSE。 */
 
-const HOSE = '/assets/vendor/rubber-hose-ui/';
-const PIXEL = '/assets/vendor/pixel-worlds/';
+/* 站点根由本模块 URL 回推（js/retro.js → 站点根），
+   兼容 GitHub Pages 子路径部署（/jay-vinyl-archive/），本地根路径同样成立 */
+const SITE_ROOT = new URL('../', import.meta.url).href;
+const HOSE = SITE_ROOT + 'assets/vendor/rubber-hose-ui/';
+const PIXEL = SITE_ROOT + 'assets/vendor/pixel-worlds/';
 
 const ERAS = [
   { label: '2000-03', name: '出道 · 范特西年代', from: 0, to: 3 },
@@ -325,7 +328,7 @@ function wire() {
       loadHoseBench().then(() => { benchReady = true; reparent(true); syncAlbum(cb.getIndex?.() ?? 0); }).catch(() => {});
     }
     if (view === 'imx' && enabled) {
-      loadScript('/js/pixel-room.js').then(() => { room = $('pixelRoom'); syncAlbum(cb.getIndex?.() ?? 0); }).catch(() => {});
+      loadScript(SITE_ROOT + 'js/pixel-room.js').then(() => { room = $('pixelRoom'); syncAlbum(cb.getIndex?.() ?? 0); }).catch(() => {});
     }
     if (view !== 'imx') room?.setRoom?.({ playing: false });
   });
