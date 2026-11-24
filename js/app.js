@@ -166,7 +166,7 @@ const backBtn = $('backBtn');
 const brandLink = $('brandLink');
 const canvas = $('vinylCanvas');
 
-const audio = new VinylAudio();
+const audio = new VinylAudio({ iosFallback: IS_APPLE_TOUCH });
 const state = {
   view: 'crate',
   index: 0,
@@ -177,6 +177,22 @@ const state = {
   rpm: 33,
   karaokeChar: (() => { try { return localStorage.getItem('jc-karaoke') !== '0'; } catch { return true; } })()
 };
+
+/* ── 唱臂 cue：拖动时压低音量，落针后平滑恢复 ─────────────── */
+let cueSnapshot = null;
+let volRaf = 0;
+function rampVolume(to, ms = 180) {
+  cancelAnimationFrame(volRaf);
+  const from = audioEl.volume;
+  const t0 = performance.now();
+  const step = (now) => {
+    const p = Math.min(1, (now - t0) / Math.max(1, ms));
+    audioEl.volume = Math.max(0, Math.min(1, from + (to - from) * p));
+    if (p < 1) volRaf = requestAnimationFrame(step);
+    else volRaf = 0;
+  };
+  volRaf = requestAnimationFrame(step);
+}
 
 /* ── 运行环境：iOS 原生壳 / 触屏 ─────────────────────────── */
 const isNative = Boolean(window.Capacitor?.isNativePlatform?.());
@@ -815,7 +831,7 @@ async function playTrack(trackIndex, { toggle = false } = {}) {
   }
   if (delay) {
     wait(delay).then(() => {
-      if (token === playToken && activeAudioKey === key) audioEl.volume = 1;
+      if (token === playToken && activeAudioKey === key && !cueSnapshot) audioEl.volume = 1;
     });
   }
   try {
@@ -1338,7 +1354,10 @@ function ensureScene() {
   if (state.scene || state.sceneFailed) return;
   try {
     state.scene = createTurntable(canvas, {
-      onNeedleDrop: () => audio.playNeedle(),
+      onNeedleDrop: () => {
+        audio.playNeedle();
+        if (typeof navigator.vibrate === 'function') navigator.vibrate(12);
+      },
       getCoverImage: (album) => getStageImage(album),
       // 拖动唱片跳转：径向位置映射播放进度
       canSeekDisc: () => Boolean(activeAudioKey) && Number.isFinite(audioEl.duration) && audioEl.duration > 0,
@@ -1352,9 +1371,66 @@ function ensureScene() {
       onDiscSeekEnd: () => {
         cursorLabel.textContent = '';
       },
+      isPlaying: () => Boolean(activeAudioKey) && !audioEl.paused,
+      canCue: () => Boolean(activeAudioKey),
+      onArmHover: (on) => {
+        if (!finePointer) return;
+        cursor.classList.toggle('is-hover', on);
+        cursorLabel.textContent = on ? '拖动唱臂' : '';
+      },
+      onCueStart: () => {
+        cueSnapshot = {
+          key: activeAudioKey,
+          time: audioEl.currentTime,
+          wasPlaying: Boolean(activeAudioKey) && !audioEl.paused
+        };
+        audio.playArmLift();
+        if (!audioEl.paused) rampVolume(0.25, 180);
+        audio.setDucking(false);
+        cursor.classList.add('is-hover');
+        cursorLabel.textContent = '拖动唱臂 · 松开落针';
+      },
+      onCueMove: (p, inside, engaged) => {
+        if (!cueSnapshot) return;
+        const d = audioEl.duration;
+        if (engaged && inside && Number.isFinite(d)) cursorLabel.textContent = fmtClock(p * d);
+        else if (inside) cursorLabel.textContent = '拖动唱臂 · 松开落针';
+        else cursorLabel.textContent = '盘外 · 松开回臂';
+      },
+      onCueCommit: (p) => {
+        const snap = cueSnapshot;
+        cueSnapshot = null;
+        if (snap?.key && Number.isFinite(audioEl.duration)) {
+          const target = Math.min(0.985, Math.max(0, p)) * audioEl.duration;
+          try {
+            if (typeof audioEl.fastSeek === 'function') audioEl.fastSeek(target);
+            else audioEl.currentTime = target;
+          } catch {
+            audioEl.currentTime = target;
+          }
+          updateAudioProgress();
+          updateTimedLyric();
+        }
+        rampVolume(1, 180);
+        audio.setDucking(snap ? snap.wasPlaying : false);
+        cursor.classList.remove('is-hover');
+        cursorLabel.textContent = '';
+      },
+      onCueCancel: () => {
+        cueSnapshot = null;
+        rampVolume(1, 180);
+        audio.setDucking(!audioEl.paused);
+        cursor.classList.remove('is-hover');
+        cursorLabel.textContent = '';
+      },
       // 播放越多，唱片磨损越重（0..1，约 40 分钟满损）
       getWear: (album) => getWear(album.n)
     });
+    if (location.search.includes('vinyldebug')) {
+      window.__vinylScene = state.scene;
+      window.__vinylAudio = audio;
+      window.__rampVolume = rampVolume;
+    }
   } catch (err) {
     console.warn('WebGL 唱机初始化失败，使用静态唱片。', err);
     state.sceneFailed = true;

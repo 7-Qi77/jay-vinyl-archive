@@ -702,6 +702,14 @@ export function createTurntable(canvas, options = {}) {
   const onDiscSeek = typeof options.onDiscSeek === 'function' ? options.onDiscSeek : () => {};
   const onDiscSeekEnd = typeof options.onDiscSeekEnd === 'function' ? options.onDiscSeekEnd : () => {};
   const getWear = typeof options.getWear === 'function' ? options.getWear : () => 0;
+  // 唱臂 cue：可抓取拖拽、松手落针
+  const onCueStart = typeof options.onCueStart === 'function' ? options.onCueStart : () => {};
+  const onCueMove = typeof options.onCueMove === 'function' ? options.onCueMove : () => {};
+  const onCueCommit = typeof options.onCueCommit === 'function' ? options.onCueCommit : () => {};
+  const onCueCancel = typeof options.onCueCancel === 'function' ? options.onCueCancel : () => {};
+  const onArmHover = typeof options.onArmHover === 'function' ? options.onArmHover : () => {};
+  const isPlaying = typeof options.isPlaying === 'function' ? options.isPlaying : () => false;
+  const canCue = typeof options.canCue === 'function' ? options.canCue : () => true;
 
   let dprCap = Math.min(window.devicePixelRatio || 1, 2);
 
@@ -1230,6 +1238,49 @@ export function createTurntable(canvas, options = {}) {
   stylusGlint.position.set(0.045, -0.13, ARM_LEN - 0.04);
   armGroup.add(stylusGlint);
 
+  // 唱臂拾取热区：不可见，仅用于 pointer raycast（触屏也够大）
+  const armPickMat = new THREE.MeshBasicMaterial({
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    colorWrite: false
+  });
+  const armPickTube = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, ARM_LEN, 8), armPickMat);
+  armPickTube.rotation.x = Math.PI / 2;
+  armPickTube.position.z = ARM_LEN / 2;
+  armGroup.add(armPickTube);
+  const armPickHead = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 12), armPickMat);
+  armPickHead.position.set(0.045, -0.06, ARM_LEN - 0.08);
+  armGroup.add(armPickHead);
+
+  // 落针处的沟槽高光环
+  const cueRingMat = new THREE.MeshBasicMaterial({
+    color: 0xffd9a8,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    depthTest: false
+  });
+  const cueRing = new THREE.Mesh(new THREE.RingGeometry(0.96, 1, 128), cueRingMat);
+  cueRing.rotation.x = -Math.PI / 2;
+  cueRing.position.y = 0.764;
+  cueRing.renderOrder = 8;
+  cueRing.visible = false;
+  root.add(cueRing);
+
+  // 针尖在盘面的接触阴影
+  const contactMat = new THREE.MeshBasicMaterial({
+    color: 0x05060c,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false
+  });
+  const contactShadow = new THREE.Mesh(new THREE.CircleGeometry(0.075, 24), contactMat);
+  contactShadow.rotation.x = -Math.PI / 2;
+  contactShadow.position.y = 0.763;
+  root.add(contactShadow);
+
   // 电源指示灯
   const led = new THREE.Mesh(
     new THREE.CylinderGeometry(0.026, 0.026, 0.012, 16),
@@ -1429,12 +1480,28 @@ export function createTurntable(canvas, options = {}) {
   let discTex = null;
   let firstShown = false;
   let seeking = false;
+  let discPress = null;
   let pointerAt = 0;
   let forceUntil = 0;
   let frameEMA = 16;
   let lowCount = 0;
   let highCount = 0;
   let orbitA = 0;
+  // 唱臂拖拽 cue 状态
+  let cueDragging = false;
+  let cueFlying = false;
+  let cueProgress = 0;
+  let cueRadius = 2.12;
+  let cueInside = true;
+  let cuePointerId = null;
+  let cueStartNeedle = false;
+  let cueEngaged = false;
+  let cueMoved = false;
+  let cueStartX = 0;
+  let cueStartY = 0;
+  let cueCam = 0;
+  let armHovering = false;
+  let hoverProbeAt = 0;
 
   function tween(duration, { delay = 0, ease = easeOutCubic, group = 'default', update, complete } = {}) {
     const t = { elapsed: -delay, duration, ease, group, update, complete, done: false };
@@ -1689,6 +1756,7 @@ export function createTurntable(canvas, options = {}) {
   }
 
   function setAlbum(album, { first = false } = {}) {
+    resetCue();
     currentAlbum = album;
     needleDown = false;
     trackProgress = 0;
@@ -1769,6 +1837,7 @@ export function createTurntable(canvas, options = {}) {
   function setActive(on) {
     active = on;
     forceUntil = performance.now() + 1200;
+    if (!on) resetCue();
     if (on) {
       spinTarget = 0;
       last = performance.now();
@@ -1827,26 +1896,281 @@ export function createTurntable(canvas, options = {}) {
     return Math.min(1, Math.max(0, (OUTER_R - r) / (OUTER_R - INNER_R)));
   };
 
+  /* ── 唱臂 cue：抓取 → 沿盘面滑动 → 松手落针 ─────────────── */
+  const cuePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.762);
+  const cuePoint = new THREE.Vector3();
+  const armPicks = [armPickTube, armPickHead];
+
+  const toNdc = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    ndc.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+  };
+
+  const cueFromEvent = (e) => {
+    toNdc(e);
+    if (!ray.ray.intersectPlane(cuePlane, cuePoint)) return null;
+    const r = Math.hypot(cuePoint.x, cuePoint.z);
+    return {
+      r,
+      p: clamp((OUTER_R - r) / (OUTER_R - INNER_R), 0, 1),
+      inside: r <= OUTER_R - 0.01 && r >= INNER_R - 0.02
+    };
+  };
+
+  const armHit = (e) => {
+    toNdc(e);
+    return ray.intersectObjects(armPicks, false)[0] || null;
+  };
+
+  function updateStylusShadow() {
+    const theta = armGroup.rotation.y;
+    const x = pivotX + STYLUS_X * Math.cos(theta) + STYLUS_Z * Math.sin(theta);
+    const z = pivotZ - STYLUS_X * Math.sin(theta) + STYLUS_Z * Math.cos(theta);
+    contactShadow.position.x = x;
+    contactShadow.position.z = z;
+  }
+
+  function setArmHover(on) {
+    if (armHovering === on) return;
+    armHovering = on;
+    onArmHover(on);
+    if (on && !needleDown && !cueDragging && !cueFlying) {
+      glintMat.opacity = Math.max(glintMat.opacity, 0.4);
+      forceUntil = performance.now() + 800;
+    } else if (!needleDown && !cueDragging && !cueFlying) {
+      glintMat.opacity = 0;
+    }
+  }
+
+  function applyCue(c) {
+    cueProgress = c.p;
+    cueRadius = c.r;
+    cueInside = c.inside;
+    if (c.inside) cueEngaged = true;
+    armGroup.rotation.y = angleForProgress(c.p);
+    cueRing.visible = true;
+    cueRing.scale.setScalar(Math.max(INNER_R, Math.min(OUTER_R, c.r)));
+    cueRingMat.opacity = c.inside ? 0.6 : 0.2;
+    updateStylusShadow();
+    contactMat.opacity = 0.4;
+    onCueMove(c.p, c.inside, cueEngaged && cueMoved);
+    forceUntil = performance.now() + 600;
+  }
+
+  function dropNeedle(p) {
+    trackProgress = p;
+    needleDown = true;
+    armGroup.rotation.y = angleForProgress(p);
+    clearGroup('arm');
+    tween(0.2, {
+      ease: easeOutCubic,
+      group: 'arm',
+      update: (q) => { armGroup.position.y = 1.20 - q * 0.07; },
+      complete: () => {
+        armGroup.position.y = 1.13;
+        spinTarget = isPlaying() ? baseSpin : 0;
+        clearGroup('bounce');
+        tween(0.65, {
+          ease: easeOutCubic,
+          group: 'bounce',
+          update: (q) => { recordGroup.position.y = Math.sin(q * Math.PI * 2.2) * 0.004 * (1 - q); },
+          complete: () => { recordGroup.position.y = 0; }
+        });
+        glintMat.opacity = 0.75;
+        tween(0.8, {
+          ease: easeOutCubic,
+          group: 'glint',
+          update: (q) => { glintMat.opacity = 0.75 * (1 - q) + 0.12 * q; },
+          complete: () => { glintMat.opacity = needleDown ? 0.12 : 0; }
+        });
+        onNeedleDrop();
+        cinematicPush();
+      }
+    });
+    onCueCommit(p);
+  }
+
+  /* 点击盘面：唱臂抬起飞到目标沟槽，再缓缓落针 */
+  function cueToProgress(p, e) {
+    if (reduced || cueDragging || cueFlying || !canCue()) return false;
+    cueFlying = true;
+    cueStartNeedle = needleDown;
+    cueProgress = p;
+    cueInside = true;
+    cueEngaged = true;
+    cueMoved = true;
+    clearGroup('arm');
+    const fromAngle = armGroup.rotation.y;
+    const fromY = armGroup.position.y;
+    const toAngle = angleForProgress(p);
+    onCueStart();
+    onCueMove(p, true, true);
+    cueRing.visible = true;
+    cueRing.scale.setScalar(OUTER_R - p * (OUTER_R - INNER_R));
+    cueRingMat.opacity = 0.6;
+    contactMat.opacity = 0.4;
+    glintMat.opacity = 0.85;
+    forceUntil = performance.now() + 900;
+    tween(0.32, {
+      ease: easeInOutCubic,
+      group: 'arm',
+      update: (q) => {
+        armGroup.rotation.y = fromAngle + (toAngle - fromAngle) * q;
+        armGroup.position.y = fromY + (1.20 - fromY) * q;
+      },
+      complete: () => {
+        dropNeedle(p);
+        cueRing.visible = false;
+        cueRingMat.opacity = 0;
+        cueFlying = false;
+      }
+    });
+    return true;
+  }
+
+  function startCue(e) {
+    if (reduced || cueDragging || cueFlying || !canCue()) return false;
+    if (!armHit(e)) return false;
+    cueDragging = true;
+    cuePointerId = e.pointerId;
+    cueStartNeedle = needleDown;
+    cueEngaged = false;
+    cueMoved = false;
+    cueStartX = e.clientX;
+    cueStartY = e.clientY;
+    clearGroup('arm');
+    if (canvas.setPointerCapture) canvas.setPointerCapture(e.pointerId);
+    setArmHover(false);
+    onCueStart();
+    tween(0.16, {
+      ease: easeOutCubic,
+      group: 'arm',
+      update: (p) => { armGroup.position.y = 1.13 + p * 0.07; }
+    });
+    glintMat.opacity = 0.85;
+    const c = cueFromEvent(e);
+    if (c) applyCue(c);
+    e.preventDefault();
+    return true;
+  }
+
+  function endCue(e, cancelled) {
+    if (!cueDragging) return;
+    const c = e ? cueFromEvent(e) : null;
+    const commit = Boolean(c && c.inside && cueEngaged && cueMoved && !cancelled);
+    cueDragging = false;
+    cuePointerId = null;
+    if (canvas.releasePointerCapture && e && canvas.hasPointerCapture?.(e.pointerId)) {
+      canvas.releasePointerCapture(e.pointerId);
+    }
+    cueRing.visible = false;
+    cueRingMat.opacity = 0;
+    clearGroup('arm');
+
+    if (commit) {
+      dropNeedle(c.p);
+    } else {
+      const back = cueStartNeedle ? angleForProgress(trackProgress) : REST_ANGLE;
+      const from = armGroup.rotation.y;
+      tween(0.5, {
+        ease: easeInOutCubic,
+        group: 'arm',
+        update: (p) => {
+          armGroup.rotation.y = from + (back - from) * p;
+          armGroup.position.y = 1.13 + Math.sin(p * Math.PI) * 0.07;
+        },
+        complete: () => { armGroup.position.y = 1.13; }
+      });
+      needleDown = cueStartNeedle;
+      onCueCancel();
+    }
+    contactMat.opacity = needleDown ? 0.24 : 0;
+    forceUntil = performance.now() + 1500;
+  }
+
+  function resetCue() {
+    if (!cueDragging && !cueFlying) return;
+    cueDragging = false;
+    cueFlying = false;
+    cuePointerId = null;
+    cueRing.visible = false;
+    cueRingMat.opacity = 0;
+    contactMat.opacity = 0;
+    clearGroup('arm');
+    onCueCancel();
+  }
+
   canvas.addEventListener('pointerdown', (e) => {
-    if (reduced || !canSeekDisc()) return;
+    if (e.button !== undefined && e.button > 0) return;
+    if (startCue(e)) return;
+    if (reduced || !canSeekDisc() || cueFlying) return;
     const p = discProgress(e);
     if (p === null) return;
-    seeking = true;
+    discPress = { x: e.clientX, y: e.clientY, p, pointerId: e.pointerId, moved: false };
     if (canvas.setPointerCapture) canvas.setPointerCapture(e.pointerId);
-    onDiscSeek(p);
   });
   canvas.addEventListener('pointermove', (e) => {
-    if (!seeking) return;
-    const p = discProgress(e);
-    if (p !== null) onDiscSeek(p);
+    if (cueDragging) {
+      if (cuePointerId !== null && e.pointerId !== cuePointerId) return;
+      if (Math.hypot(e.clientX - cueStartX, e.clientY - cueStartY) > 6) cueMoved = true;
+      const c = cueFromEvent(e);
+      if (c) applyCue(c);
+      return;
+    }
+    if (discPress) {
+      if (e.pointerId !== discPress.pointerId) return;
+      if (!discPress.moved && Math.hypot(e.clientX - discPress.x, e.clientY - discPress.y) > 6) {
+        discPress.moved = true;
+        seeking = true;
+        onDiscSeek(discPress.p);
+      }
+      if (discPress.moved) {
+        const p = discProgress(e);
+        if (p !== null) onDiscSeek(p);
+      }
+      return;
+    }
+    if (seeking || e.pointerType !== 'mouse') return;
+    const now = performance.now();
+    if (now - hoverProbeAt < 80) return;
+    hoverProbeAt = now;
+    setArmHover(Boolean(armHit(e)));
   });
-  const endDiscSeek = () => {
-    if (!seeking) return;
-    seeking = false;
-    onDiscSeekEnd();
-  };
-  canvas.addEventListener('pointerup', endDiscSeek);
-  canvas.addEventListener('pointercancel', endDiscSeek);
+  canvas.addEventListener('pointerup', (e) => {
+    if (cueDragging) {
+      endCue(e, false);
+      return;
+    }
+    if (!discPress || e.pointerId !== discPress.pointerId) return;
+    const press = discPress;
+    discPress = null;
+    if (canvas.releasePointerCapture && canvas.hasPointerCapture?.(e.pointerId)) {
+      canvas.releasePointerCapture(e.pointerId);
+    }
+    if (press.moved) {
+      seeking = false;
+      onDiscSeekEnd();
+    } else if (canCue() && !reduced) {
+      cueToProgress(press.p, e);
+    } else {
+      onDiscSeek(press.p);
+      onDiscSeekEnd();
+    }
+  });
+  canvas.addEventListener('pointercancel', (e) => {
+    if (cueDragging) {
+      endCue(e, true);
+      return;
+    }
+    if (!discPress || e.pointerId !== discPress.pointerId) return;
+    const press = discPress;
+    discPress = null;
+    if (press.moved) {
+      seeking = false;
+      onDiscSeekEnd();
+    }
+  });
 
   resize();
 
@@ -1877,9 +2201,13 @@ export function createTurntable(canvas, options = {}) {
     recordGroup.position.x = Math.sin(spin * 0.5) * 0.0022;
     recordGroup.position.z = Math.cos(spin * 0.5) * 0.0022;
 
-    // 唱臂随播放进度向盘心循迹（拖动跳转时快速跟上）
-    const armTarget = needleDown ? angleForProgress(trackProgress) : null;
+    // 唱臂随播放进度向盘心循迹（拖动跳转时快速跟上；手动 cue 时让位给指针）
+    const armTarget = needleDown && !cueDragging && !cueFlying ? angleForProgress(trackProgress) : null;
     const armDelta = armTarget !== null ? Math.abs(armGroup.rotation.y - armTarget) : 0;
+
+    // 手动 cue 时镜头轻微跟手，增强“在手边操作”的沉浸感
+    const cueCamTarget = (cueDragging || cueFlying) ? (cueProgress - 0.5) * 0.12 : 0;
+    cueCam += (cueCamTarget - cueCam) * Math.min(1, dt * 4);
 
     // 闲置时极缓环绕：无指针输入且仍在播放，镜头慢慢绕盘心漂移
     if (!reduced && now - pointerAt > 9000 && spinSpeed > 0.05) {
@@ -1900,6 +2228,9 @@ export function createTurntable(canvas, options = {}) {
       tweens.size > 0 ||
       spinSpeed > 0.02 ||
       seeking ||
+      cueDragging ||
+      cueFlying ||
+      Math.abs(cueCam) > 0.001 ||
       armDelta > 0.0015 ||
       !camIdle ||
       now - pointerAt < 1600 ||
@@ -1909,6 +2240,20 @@ export function createTurntable(canvas, options = {}) {
     if (armTarget !== null) {
       const rate = armDelta > 0.06 ? 8 : 1.6;
       armGroup.rotation.y += (armTarget - armGroup.rotation.y) * Math.min(1, dt * rate);
+    }
+
+    // 针尖接触阴影与 cue 高光环
+    updateStylusShadow();
+    contactMat.opacity = (cueDragging || cueFlying) ? 0.4 : needleDown ? 0.22 : 0;
+    if (cueDragging || cueFlying) {
+      cueRing.visible = true;
+      cueRingMat.opacity = 0.55 + Math.sin(now * 0.006) * 0.12;
+    } else if (cueRing.visible) {
+      cueRingMat.opacity *= 0.9;
+      if (cueRingMat.opacity < 0.01) {
+        cueRing.visible = false;
+        cueRingMat.opacity = 0;
+      }
     }
 
     // 极轻微的唱片翘曲：随转动呼吸
@@ -1938,7 +2283,7 @@ export function createTurntable(canvas, options = {}) {
     const px = reduced ? 0 : pointerX;
     const py = reduced ? 0 : pointerY;
     const drift = reduced ? 0 : Math.sin(now * 0.00042) * 0.045;
-    camera.position.x += (camBase.x + px * 0.42 + drift - camera.position.x) * Math.min(1, dt * 2.2);
+    camera.position.x += (camBase.x + px * 0.42 + drift + cueCam - camera.position.x) * Math.min(1, dt * 2.2);
     camera.position.y += (camBase.y - py * 0.2 - camera.position.y) * Math.min(1, dt * 2.2);
     camera.position.z += (camBase.z - camera.position.z) * Math.min(1, dt * 2.2);
     camLookCurrent.lerp(camLook, Math.min(1, dt * 2.2));
@@ -1993,6 +2338,50 @@ export function createTurntable(canvas, options = {}) {
     setWear,
     get album() { return currentAlbum; },
     get spinning() { return needleDown; },
+    get cueing() { return cueDragging || cueFlying; },
+    get cueProgress() { return cueProgress; },
+    get armAngle() { return armGroup.rotation.y; },
+    debugCueRing() {
+      const rect = canvas.getBoundingClientRect();
+      const project = (x, z) => {
+        const v = new THREE.Vector3(x, 0.764, z).project(camera);
+        return { x: rect.left + (v.x + 1) * 0.5 * rect.width, y: rect.top + (-v.y + 1) * 0.5 * rect.height };
+      };
+      const center = project(0, 0);
+      const edge = project(cueRing.scale.x, 0);
+      return {
+        visible: cueRing.visible,
+        opacity: +cueRingMat.opacity.toFixed(3),
+        scale: +cueRing.scale.x.toFixed(3),
+        parent: cueRing.parent === root,
+        y: cueRing.position.y,
+        screenRadius: Math.round(Math.hypot(edge.x - center.x, edge.y - center.y)),
+        screenCenter: { x: Math.round(center.x), y: Math.round(center.y) }
+      };
+    },
+    armScreen() {
+      const p = new THREE.Vector3(0.045, -0.1, ARM_LEN - 0.06);
+      armGroup.localToWorld(p);
+      p.project(camera);
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: rect.left + (p.x + 1) * 0.5 * rect.width,
+        y: rect.top + (-p.y + 1) * 0.5 * rect.height
+      };
+    },
+    discScreen() {
+      const rect = canvas.getBoundingClientRect();
+      const project = (x, z) => {
+        const v = new THREE.Vector3(x, 0.757, z).project(camera);
+        return {
+          x: rect.left + (v.x + 1) * 0.5 * rect.width,
+          y: rect.top + (-v.y + 1) * 0.5 * rect.height
+        };
+      };
+      const center = project(0, 0);
+      const edge = project(2.26, 0);
+      return { center, radius: Math.hypot(edge.x - center.x, edge.y - center.y) };
+    },
     dispose() {
       cancelAnimationFrame(raf);
       ro.disconnect();
