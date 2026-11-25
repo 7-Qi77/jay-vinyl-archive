@@ -2,6 +2,8 @@
  * 用户导入歌词的持久化存储：IndexedDB 为主、localStorage 双写兜底。
  * 键与业务一致（`${专辑号}-${曲目索引}`），向 app.js 提供同步读（内存 Map）。
  */
+import { titleIndexOf } from './data.js';
+
 const DB_NAME = 'jc-vinyl-lyrics';
 const STORE = 'lyrics';
 const LS_PREFIX = 'jc-lyric-';
@@ -166,7 +168,7 @@ export function removeLyric(n, t) {
 /** 曲目表扩展后，把旧索引上的歌词搬到新索引（按曲名对位） */
 export function migrateLyricIndices(n, oldTracks, newTracks) {
   oldTracks.forEach((title, i) => {
-    const j = newTracks.indexOf(title);
+    const j = titleIndexOf(newTracks, title);
     if (j < 0 || j === i) return;
     const from = keyOf(n, i);
     const entry = mem.get(from);

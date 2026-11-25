@@ -1,0 +1,35 @@
+{
+  "allPass": true,
+  "crackleDensity": {
+    "clean": 18,
+    "pass": true,
+    "worn": 192
+  },
+  "determinism": {
+    "events": 16,
+    "maxDiff": 0.0003389120101928711,
+    "pass": true,
+    "samePattern": true
+  },
+  "innerGroove": {
+    "dropDb": -4.175915120588737,
+    "innerDb": -73.98498252622991,
+    "outerDb": -69.80906740564117,
+    "pass": true
+  },
+  "playbackTilt": {
+    "highDb": -9.65512868001692,
+    "lowDb": 14.933028700146277,
+    "pass": true
+  },
+  "riaaRoundTrip": {
+    "maxDev": 6.573447564051094e-08,
+    "pass": true
+  },
+  "wowSidebands": {
+    "carrier": 0.036859671160063286,
+    "pass": true,
+    "ratio": 8.030868098457777,
+    "sideband": 0.2960151572389964
+  }
+}

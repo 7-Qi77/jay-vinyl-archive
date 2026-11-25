@@ -3170,6 +3170,32 @@ body:not(.no-retro) #lyricsBatchBtn { display: none; }
 body.no-retro .sheet-retro-head,
 body.no-retro .sheet-retro-foot { display: none; }
 
+/* 压碟档案卡：纸面 ink，提示词即参数叙事 */
+.dossier {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1.5px dashed rgba(43, 36, 28, 0.5);
+  border-radius: 6px;
+  background: rgba(247, 240, 226, 0.62);
+}
+.dossier__kicker { font-size: 9px; letter-spacing: 0.22em; color: rgba(43, 36, 28, 0.6); }
+.dossier__title { font-size: 13px; line-height: 1.5; color: #2b241c; }
+.dossier__prompt { margin: 0; font-size: 11.5px; line-height: 1.8; color: rgba(43, 36, 28, 0.84); }
+.dossier__meta { font-size: 9.5px; letter-spacing: 0.08em; color: rgba(43, 36, 28, 0.55); }
+.dossier__wear { display: flex; align-items: center; gap: 8px; font-size: 10px; color: rgba(43, 36, 28, 0.72); }
+.dossier__wear > span { flex: 0 0 auto; white-space: nowrap; }
+.dossier__wear hose-slider { width: 132px; flex: 0 0 auto; }
+.dossier__wear output { font-size: 10px; flex: 0 0 auto; min-width: 30px; text-align: right; }
+body.no-retro .dossier { display: none; }
+@media (max-width: 700px) {
+  .dossier { grid-column: 1 / -1; }
+  .dossier__prompt { font-size: 11px; }
+}
+
 /* ── 融合层：暗面像素机器 ─────────────────────────────────── */
 
 .gate-sigil { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 20px 0 6px; }

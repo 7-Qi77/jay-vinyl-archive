@@ -5,6 +5,7 @@
  * 项目只打包用户自有文件；在线内容只存 URL / ID 与本机文本缓存，不打包受版权保护的音频。
  */
 import { getSongPreview, getSongDuration, getTracklistMeta } from './covers.js';
+import { normTitle, titleIndexOf } from './data.js';
 
 const META_URL = './assets/track-meta.json';
 const AUDIO_DIR = './assets/audio/';
@@ -112,9 +113,9 @@ export function initMedia(albums) {
 
     if (manifest?.files) {
       const titleIndex = new Map();
-      albums.forEach((a) => a.tracks.forEach((t, i) => titleIndex.set(t, keyOf(a.n, i))));
+      albums.forEach((a) => a.tracks.forEach((t, i) => titleIndex.set(normTitle(t), keyOf(a.n, i))));
       for (const f of manifest.files) {
-        const key = titleIndex.get(f.title);
+        const key = titleIndex.get(normTitle(f.title));
         if (key) localAudio.set(key, { url: AUDIO_DIR + encodeURIComponent(f.file), name: f.file });
       }
     }
@@ -149,7 +150,7 @@ export async function adoptFullTracklist(n, oldTracks, entries) {
   const albumMeta = { tracks: entries.map((e) => ({ ...e })) };
   const oldMeta = meta.albums[String(n)]?.tracks || [];
   oldTracks.forEach((title, i) => {
-    const j = names.indexOf(title);
+    const j = titleIndexOf(names, title);
     if (j < 0 || !oldMeta[i]) return;
     albumMeta.tracks[j] = {
       ...albumMeta.tracks[j],
@@ -167,7 +168,7 @@ export async function adoptFullTracklist(n, oldTracks, entries) {
       const key = keyOf(n, i);
       const entry = map.get(key);
       if (!entry) continue;
-      const j = names.indexOf(oldTracks[i]);
+      const j = titleIndexOf(names, oldTracks[i]);
       if (j < 0 || j === i) continue;
       map.delete(key);
       const to = keyOf(n, j);
@@ -185,7 +186,7 @@ export async function adoptFullTracklist(n, oldTracks, entries) {
 
   // 在线歌词缓存迁移
   for (let i = 0; i < oldTracks.length; i++) {
-    const j = names.indexOf(oldTracks[i]);
+    const j = titleIndexOf(names, oldTracks[i]);
     if (j < 0 || j === i) continue;
     try {
       const from = cacheKey(n, i);
@@ -226,7 +227,7 @@ export function resolveAudio(n, i, title) {
   if (title && albumsRef) {
     const album = albumsRef.find((a) => a.n === n);
     const t = album ? getTracklistMeta(album) : null;
-    const hit = t ? t.find((e) => e.name === title) : null;
+    const hit = t ? t.find((e) => normTitle(e.name) === normTitle(title)) : null;
     if (hit?.previewUrl) {
       return {
         url: hit.previewUrl,

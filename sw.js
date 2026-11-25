@@ -1,5 +1,5 @@
 /* 静态站点离线壳：只缓存同源静态资源，音频与 iTunes 接口保持网络直连。 */
-const VERSION = 'jc-vinyl-v2-20261125';
+const VERSION = 'jc-vinyl-v3-20261126';
 const CORE_CACHE = `${VERSION}-core`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 
@@ -17,6 +17,8 @@ const CORE = [
   './js/lyricstore.js',
   './js/vinyl-worklet.js',
   './js/retro.js',
+  './js/pixel-room.js',
+  './assets/vinyl-profiles.json',
   './assets/vendor/three.module.js',
   './assets/vendor/RoundedBoxGeometry.js',
   './assets/fonts/NotoSerifSC-900.woff2',
@@ -27,7 +29,7 @@ const CORE = [
   './assets/social-card.jpg'
 ];
 
-const STATIC_RE = /\.(?:css|js|woff2|png|jpg|jpeg|svg|webmanifest)$/i;
+const STATIC_RE = /\.(?:css|js|json|woff2|png|jpg|jpeg|svg|webmanifest)$/i;
 const AUDIO_RE = /\.(?:m4a|mp3|aac|wav|ogg|opus)$/i;
 
 self.addEventListener('install', (event) => {

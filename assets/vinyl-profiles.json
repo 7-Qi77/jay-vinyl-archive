@@ -1,0 +1,778 @@
+{
+  "version": 1,
+  "note": "黑胶音质提示词档案：每段 prompt 文本即参数来源叙事；noise/mechanics/cartridge/inner 驱动 js/audio.js 物理链。wear 为基础磨损，播放累积磨损另计。tracks 以 n+title 匹配（曲目顺序随音源目录变化，索引不可靠）。",
+  "albums": {
+    "1": {
+      "id": "p-jay-2000",
+      "era": "2000",
+      "pressing": "首版 · 阿尔发/ BMG 台压",
+      "plays": 320,
+      "wear": 0.58,
+      "condition": "daily",
+      "noise": {
+        "crackle": 0.058,
+        "hiss": 0.01,
+        "rumble": 0.42,
+        "hum": 0.00006,
+        "friction": 0.005,
+        "microRate": 9,
+        "popRate": 1,
+        "burstRate": 0.16,
+        "popAmp": 0.38,
+        "decayMs": 13,
+        "tick": 0.02
+      },
+      "mechanics": {
+        "wowPct": 0.0011,
+        "ripplePct": 0.00014,
+        "driftPct": 0.00024,
+        "flutterPct": 0.00034,
+        "eccPct": 0.0006
+      },
+      "cartridge": {
+        "freq": 9200,
+        "gain": 1.5,
+        "q": 0.9
+      },
+      "hfLoss": 1.8,
+      "inner": {
+        "outer": 15200,
+        "inner": 10800
+      },
+      "glare": 0.25,
+      "prompt": "2000 年首版台压黑胶，二手店淘得、被播放过三百余次：噼啪中密（micro 9/s、pop 1/s）、嘶声 10m 级、轴承隆隆可闻；偏心晃摆 0.06% 每转一次，唱头 9.2kHz 谐振偏亮，高频滚降 1.8dB，内圈收至 10.8kHz。听感应像唱针略钝的老碟：人声温、齿音毛、底噪有颗粒但不掩旋律。"
+    },
+    "2": {
+      "id": "p-fantasy-2001",
+      "era": "2001",
+      "pressing": "首版 · 台压双碟",
+      "plays": 410,
+      "wear": 0.62,
+      "condition": "daily",
+      "noise": {
+        "crackle": 0.062,
+        "hiss": 0.011,
+        "rumble": 0.46,
+        "hum": 0.00008,
+        "friction": 0.0055,
+        "microRate": 10,
+        "popRate": 1.1,
+        "burstRate": 0.18,
+        "popAmp": 0.4,
+        "decayMs": 14,
+        "tick": 0.025
+      },
+      "mechanics": {
+        "wowPct": 0.0012,
+        "ripplePct": 0.00016,
+        "driftPct": 0.00026,
+        "flutterPct": 0.00036,
+        "eccPct": 0.0007
+      },
+      "cartridge": {
+        "freq": 9000,
+        "gain": 1.6,
+        "q": 1
+      },
+      "hfLoss": 2,
+      "inner": {
+        "outer": 15000,
+        "inner": 10600
+      },
+      "glare": 0.3,
+      "prompt": "2001 年双碟首版，A 面被唱得最多：爆豆衰减偏长（14ms）、划痕 burst 0.18/s，市电嗡声微露；wow 0.12% 带二次旋转纹波，偏心 0.07%。唱头 9kHz 峰 +1.6dB 给《双截棍》的 riff 一点毛边，高频 -2dB、内圈 10.6kHz，整体像一台皮带老化的唱机放旧碟。"
+    },
+    "3": {
+      "id": "p-eight-2002",
+      "era": "2002",
+      "pressing": "首版 · 台压",
+      "plays": 260,
+      "wear": 0.55,
+      "condition": "worn",
+      "noise": {
+        "crackle": 0.055,
+        "hiss": 0.0095,
+        "rumble": 0.4,
+        "hum": 0.00005,
+        "friction": 0.0048,
+        "microRate": 8,
+        "popRate": 0.9,
+        "burstRate": 0.14,
+        "popAmp": 0.36,
+        "decayMs": 12,
+        "tick": 0.018
+      },
+      "mechanics": {
+        "wowPct": 0.001,
+        "ripplePct": 0.00013,
+        "driftPct": 0.00022,
+        "flutterPct": 0.00032,
+        "eccPct": 0.00055
+      },
+      "cartridge": {
+        "freq": 9400,
+        "gain": 1.4,
+        "q": 0.9
+      },
+      "hfLoss": 1.7,
+      "inner": {
+        "outer": 15400,
+        "inner": 11000
+      },
+      "glare": 0.22,
+      "prompt": "2002 年首版、封套已磨白：worn 档但保存尚可，微爆 8/s、爆豆 0.9/s；《暗号》的合成器低频让轴承隆隆 0.40 托底。偏心 0.055% 每转一次轻 tick，高频 -1.7dB，内圈 11kHz：暗色、糊一点边缘，但节拍仍稳。"
+    },
+    "4": {
+      "id": "yeh-2003",
+      "era": "2003",
+      "pressing": "首版 · 台压加印",
+      "plays": 500,
+      "wear": 0.66,
+      "condition": "daily",
+      "noise": {
+        "crackle": 0.068,
+        "hiss": 0.012,
+        "rumble": 0.5,
+        "hum": 0.0001,
+        "friction": 0.006,
+        "microRate": 12,
+        "popRate": 1.3,
+        "burstRate": 0.22,
+        "popAmp": 0.44,
+        "decayMs": 16,
+        "tick": 0.03
+      },
+      "mechanics": {
+        "wowPct": 0.0013,
+        "ripplePct": 0.00017,
+        "driftPct": 0.00028,
+        "flutterPct": 0.0004,
+        "eccPct": 0.0008
+      },
+      "cartridge": {
+        "freq": 8800,
+        "gain": 1.8,
+        "q": 1.1
+      },
+      "hfLoss": 2.3,
+      "inner": {
+        "outer": 14800,
+        "inner": 10200
+      },
+      "glare": 0.4,
+      "prompt": "2003 年加印版、播放五百次的全架最旧碟：微爆 12/s、burst 0.22/s、爆豆衰减 16ms，嗡声与隆隆都露头；wow 0.13% + 偏心 0.08% 让《以父之名》的管风琴微微晃。唱头 8.8kHz +1.8dB、高频 -2.3dB、内圈 10.2kHz、glare 0.4：内圈失真可闻，像针尖该换了。"
+    },
+    "5": {
+      "id": "qilixiang-2004",
+      "era": "2004",
+      "pressing": "首版 · 台压",
+      "plays": 240,
+      "wear": 0.38,
+      "condition": "daily",
+      "noise": {
+        "crackle": 0.045,
+        "hiss": 0.008,
+        "rumble": 0.34,
+        "hum": 0.00003,
+        "friction": 0.004,
+        "microRate": 6,
+        "popRate": 0.7,
+        "burstRate": 0.1,
+        "popAmp": 0.32,
+        "decayMs": 11,
+        "tick": 0.008
+      },
+      "mechanics": {
+        "wowPct": 0.0009,
+        "ripplePct": 0.00012,
+        "driftPct": 0.0002,
+        "flutterPct": 0.00028,
+        "eccPct": 0.0004
+      },
+      "cartridge": {
+        "freq": 9500,
+        "gain": 1.2,
+        "q": 0.9
+      },
+      "hfLoss": 1.3,
+      "inner": {
+        "outer": 15800,
+        "inner": 11600
+      },
+      "glare": 0.12,
+      "prompt": "2004 年首版、夏天车载常放：中度磨损 0.38，微爆 6/s、pop 0.7/s，嘶声 8m；wow 0.09%、偏心 0.04%。高频 -1.3dB 保留吉他扫弦的空气感，内圈 11.6kHz：暖但不糊，像晒过太阳的碟。"
+    },
+    "6": {
+      "id": "chopin-2005",
+      "era": "2005",
+      "pressing": "首版 · 台压",
+      "plays": 280,
+      "wear": 0.42,
+      "condition": "daily",
+      "noise": {
+        "crackle": 0.048,
+        "hiss": 0.0085,
+        "rumble": 0.36,
+        "hum": 0.00004,
+        "friction": 0.0042,
+        "microRate": 7,
+        "popRate": 0.8,
+        "burstRate": 0.12,
+        "popAmp": 0.34,
+        "decayMs": 12,
+        "tick": 0.01
+      },
+      "mechanics": {
+        "wowPct": 0.00095,
+        "ripplePct": 0.00012,
+        "driftPct": 0.0002,
+        "flutterPct": 0.0003,
+        "eccPct": 0.00045
+      },
+      "cartridge": {
+        "freq": 9400,
+        "gain": 1.3,
+        "q": 0.9
+      },
+      "hfLoss": 1.4,
+      "inner": {
+        "outer": 15600,
+        "inner": 11400
+      },
+      "glare": 0.15,
+      "prompt": "2005 年首版、夜听为主：隆隆 0.36 与微嗡托住《夜曲》的钢琴低音；微爆 7/s、pop 0.8/s 克制。wow 0.095%、偏心 0.045%，高频 -1.4dB、内圈 11.4kHz：安静段落能听见沟槽呼吸，强奏不炸。"
+    },
+    "7": {
+      "id": "still-2006",
+      "era": "2006",
+      "pressing": "首版 · 台压",
+      "plays": 200,
+      "wear": 0.35,
+      "condition": "daily",
+      "noise": {
+        "crackle": 0.042,
+        "hiss": 0.0075,
+        "rumble": 0.32,
+        "hum": 0.00002,
+        "friction": 0.0038,
+        "microRate": 5,
+        "popRate": 0.6,
+        "burstRate": 0.09,
+        "popAmp": 0.3,
+        "decayMs": 10,
+        "tick": 0.006
+      },
+      "mechanics": {
+        "wowPct": 0.00085,
+        "ripplePct": 0.00011,
+        "driftPct": 0.00019,
+        "flutterPct": 0.00026,
+        "eccPct": 0.00035
+      },
+      "cartridge": {
+        "freq": 9600,
+        "gain": 1.1,
+        "q": 0.9
+      },
+      "hfLoss": 1.2,
+      "inner": {
+        "outer": 16000,
+        "inner": 11800
+      },
+      "glare": 0.1,
+      "prompt": "2006 年首版、保存较好：微爆 5/s、pop 0.6/s，嘶声 7.5m；wow 0.085%、偏心 0.035%。《千里之外》的对唱需要干净中频：高频仅 -1.2dB、内圈 11.8kHz，glare 0.10：旧而不脏。"
+    },
+    "8": {
+      "id": "busy-2007",
+      "era": "2007",
+      "pressing": "首版 · 台压",
+      "plays": 230,
+      "wear": 0.4,
+      "condition": "daily",
+      "noise": {
+        "crackle": 0.046,
+        "hiss": 0.008,
+        "rumble": 0.35,
+        "hum": 0.00003,
+        "friction": 0.004,
+        "microRate": 6,
+        "popRate": 0.7,
+        "burstRate": 0.11,
+        "popAmp": 0.33,
+        "decayMs": 12,
+        "tick": 0.008
+      },
+      "mechanics": {
+        "wowPct": 0.0009,
+        "ripplePct": 0.00012,
+        "driftPct": 0.0002,
+        "flutterPct": 0.00028,
+        "eccPct": 0.0004
+      },
+      "cartridge": {
+        "freq": 9500,
+        "gain": 1.2,
+        "q": 0.9
+      },
+      "hfLoss": 1.3,
+      "inner": {
+        "outer": 15800,
+        "inner": 11600
+      },
+      "glare": 0.12,
+      "prompt": "2007 年首版、点唱率高的合辑感碟：微爆 6/s、burst 0.11/s；wow 0.09%、偏心 0.04%。《青花瓷》的古筝齿音靠唱头 9.5kHz +1.2dB 提一点釉面光泽，高频 -1.3dB 收住毛刺：温润带旧气。"
+    },
+    "9": {
+      "id": "capricorn-2008",
+      "era": "2008",
+      "pressing": "首版 · 台压",
+      "plays": 150,
+      "wear": 0.22,
+      "condition": "clean",
+      "noise": {
+        "crackle": 0.036,
+        "hiss": 0.007,
+        "rumble": 0.28,
+        "hum": 0.00001,
+        "friction": 0.0032,
+        "microRate": 4,
+        "popRate": 0.5,
+        "burstRate": 0.07,
+        "popAmp": 0.28,
+        "decayMs": 10,
+        "tick": 0
+      },
+      "mechanics": {
+        "wowPct": 0.00075,
+        "ripplePct": 0.0001,
+        "driftPct": 0.00017,
+        "flutterPct": 0.00024,
+        "eccPct": 0.00028
+      },
+      "cartridge": {
+        "freq": 9800,
+        "gain": 1,
+        "q": 0.9
+      },
+      "hfLoss": 1,
+      "inner": {
+        "outer": 16200,
+        "inner": 12200
+      },
+      "glare": 0.06,
+      "prompt": "2008 年首版、书架保存：clean 档，微爆 4/s、pop 0.5/s，嘶声 7m；wow 0.075%、偏心 0.028% 几乎不可察。《稻香》的木吉他要空气感：高频 -1.0dB、内圈 12.2kHz、glare 0.06：近新碟的干净底噪。"
+    },
+    "10": {
+      "id": "era-2010",
+      "era": "2010",
+      "pressing": "首版 · 欧压再版",
+      "plays": 170,
+      "wear": 0.25,
+      "condition": "daily",
+      "noise": {
+        "crackle": 0.038,
+        "hiss": 0.0072,
+        "rumble": 0.3,
+        "hum": 0.00002,
+        "friction": 0.0034,
+        "microRate": 5,
+        "popRate": 0.55,
+        "burstRate": 0.08,
+        "popAmp": 0.3,
+        "decayMs": 10,
+        "tick": 0.004
+      },
+      "mechanics": {
+        "wowPct": 0.0008,
+        "ripplePct": 0.0001,
+        "driftPct": 0.00018,
+        "flutterPct": 0.00025,
+        "eccPct": 0.0003
+      },
+      "cartridge": {
+        "freq": 9700,
+        "gain": 1.1,
+        "q": 0.9
+      },
+      "hfLoss": 1.1,
+      "inner": {
+        "outer": 16000,
+        "inner": 12000
+      },
+      "glare": 0.08,
+      "prompt": "2010 年欧压再版、压碟质量较好：微爆 5/s、pop 0.55/s；wow 0.08%、偏心 0.03%。电子与古典碰撞的编曲怕糊：高频 -1.1dB、内圈 12kHz、glare 0.08，隆隆 0.30 只托底不抢戏。"
+    },
+    "11": {
+      "id": "exclaim-2011",
+      "era": "2011",
+      "pressing": "首版 · 台压",
+      "plays": 120,
+      "wear": 0.2,
+      "condition": "clean",
+      "noise": {
+        "crackle": 0.034,
+        "hiss": 0.0066,
+        "rumble": 0.26,
+        "hum": 0,
+        "friction": 0.003,
+        "microRate": 4,
+        "popRate": 0.45,
+        "burstRate": 0.06,
+        "popAmp": 0.26,
+        "decayMs": 9,
+        "tick": 0
+      },
+      "mechanics": {
+        "wowPct": 0.0007,
+        "ripplePct": 0.00009,
+        "driftPct": 0.00016,
+        "flutterPct": 0.00022,
+        "eccPct": 0.00025
+      },
+      "cartridge": {
+        "freq": 10000,
+        "gain": 0.9,
+        "q": 0.9
+      },
+      "hfLoss": 0.9,
+      "inner": {
+        "outer": 16400,
+        "inner": 12400
+      },
+      "glare": 0.05,
+      "prompt": "2011 年首版、播放较少：clean 档微爆 4/s、pop 0.45/s；wow 0.07%、偏心 0.025%。《Mine Mine》的电子低频要稳：隆隆 0.26、无嗡声，高频 -0.9dB、内圈 12.4kHz：干净带一丝沟槽存在感。"
+    },
+    "12": {
+      "id": "twelve-2012",
+      "era": "2012",
+      "pressing": "首版 · 台压",
+      "plays": 140,
+      "wear": 0.24,
+      "condition": "daily",
+      "noise": {
+        "crackle": 0.037,
+        "hiss": 0.007,
+        "rumble": 0.29,
+        "hum": 0.00001,
+        "friction": 0.0033,
+        "microRate": 4,
+        "popRate": 0.5,
+        "burstRate": 0.07,
+        "popAmp": 0.28,
+        "decayMs": 10,
+        "tick": 0
+      },
+      "mechanics": {
+        "wowPct": 0.00075,
+        "ripplePct": 0.0001,
+        "driftPct": 0.00017,
+        "flutterPct": 0.00024,
+        "eccPct": 0.00028
+      },
+      "cartridge": {
+        "freq": 9800,
+        "gain": 1,
+        "q": 0.9
+      },
+      "hfLoss": 1,
+      "inner": {
+        "outer": 16200,
+        "inner": 12200
+      },
+      "glare": 0.06,
+      "prompt": "2012 年首版、轻度使用：微爆 4/s、pop 0.5/s；wow 0.075%、偏心 0.028%。《明明就》的钢琴与弦乐要分离度：高频 -1.0dB、内圈 12.2kHz、glare 0.06：旧气只在静场露一点。"
+    },
+    "13": {
+      "id": "aiyo-2014",
+      "era": "2014",
+      "pressing": "首版 · 欧压",
+      "plays": 80,
+      "wear": 0.12,
+      "condition": "clean",
+      "noise": {
+        "crackle": 0.03,
+        "hiss": 0.0062,
+        "rumble": 0.24,
+        "hum": 0,
+        "friction": 0.0026,
+        "microRate": 3,
+        "popRate": 0.4,
+        "burstRate": 0.05,
+        "popAmp": 0.25,
+        "decayMs": 9,
+        "tick": 0
+      },
+      "mechanics": {
+        "wowPct": 0.0006,
+        "ripplePct": 0.00008,
+        "driftPct": 0.00014,
+        "flutterPct": 0.0002,
+        "eccPct": 0.0002
+      },
+      "cartridge": {
+        "freq": 10200,
+        "gain": 0.8,
+        "q": 0.9
+      },
+      "hfLoss": 0.8,
+      "inner": {
+        "outer": 16500,
+        "inner": 12800
+      },
+      "glare": 0.03,
+      "prompt": "2014 年欧压、近新：微爆 3/s、pop 0.4/s，嘶声 6.2m；wow 0.06%、偏心 0.02%。《手写的从前》的民谣吉他要纸面质感：摩擦噪声 2.6m 随电平起伏，高频 -0.8dB、内圈 12.8kHz：几乎新碟，只留沟槽呼吸。"
+    },
+    "14": {
+      "id": "bedtime-2016",
+      "era": "2016",
+      "pressing": "首版 · 欧压",
+      "plays": 60,
+      "wear": 0.1,
+      "condition": "clean",
+      "noise": {
+        "crackle": 0.028,
+        "hiss": 0.006,
+        "rumble": 0.23,
+        "hum": 0,
+        "friction": 0.0025,
+        "microRate": 3,
+        "popRate": 0.35,
+        "burstRate": 0.05,
+        "popAmp": 0.24,
+        "decayMs": 8,
+        "tick": 0
+      },
+      "mechanics": {
+        "wowPct": 0.00058,
+        "ripplePct": 0.00008,
+        "driftPct": 0.00013,
+        "flutterPct": 0.00019,
+        "eccPct": 0.00018
+      },
+      "cartridge": {
+        "freq": 10300,
+        "gain": 0.8,
+        "q": 0.9
+      },
+      "hfLoss": 0.75,
+      "inner": {
+        "outer": 16500,
+        "inner": 13000
+      },
+      "glare": 0.02,
+      "prompt": "2016 年欧压、收藏级保存：微爆 3/s、pop 0.35/s；wow 0.058%、偏心 0.018%。《告白气球》的香颂手风琴要亮而不刺：唱头 10.3kHz +0.8dB、高频 -0.75dB、内圈 13kHz：近新碟的甜。"
+    },
+    "15": {
+      "id": "greatest-2022",
+      "era": "2022",
+      "pressing": "首版 · 欧压 180g",
+      "plays": 30,
+      "wear": 0.08,
+      "condition": "clean",
+      "noise": {
+        "crackle": 0.026,
+        "hiss": 0.0058,
+        "rumble": 0.22,
+        "hum": 0,
+        "friction": 0.0024,
+        "microRate": 2,
+        "popRate": 0.3,
+        "burstRate": 0.04,
+        "popAmp": 0.22,
+        "decayMs": 8,
+        "tick": 0
+      },
+      "mechanics": {
+        "wowPct": 0.00055,
+        "ripplePct": 0.00007,
+        "driftPct": 0.00012,
+        "flutterPct": 0.00018,
+        "eccPct": 0.00015
+      },
+      "cartridge": {
+        "freq": 10500,
+        "gain": 0.7,
+        "q": 0.9
+      },
+      "hfLoss": 0.7,
+      "inner": {
+        "outer": 16800,
+        "inner": 13200
+      },
+      "glare": 0.02,
+      "prompt": "2022 年 180g 欧压、几乎未播放：微爆 2/s、pop 0.3/s，嘶声 5.8m；wow 0.055%、偏心 0.015% 接近仪器级。《最伟大的作品》的钢琴与艺术摇滚编曲要全频：高频 -0.7dB、内圈 13.2kHz、glare 0.02：只余极轻沟槽底噪证明是黑胶。"
+    },
+    "16": {
+      "id": "sun-2026",
+      "era": "2026",
+      "pressing": "首版 · 欧压 180g",
+      "plays": 10,
+      "wear": 0.05,
+      "condition": "clean",
+      "noise": {
+        "crackle": 0.024,
+        "hiss": 0.0055,
+        "rumble": 0.2,
+        "hum": 0,
+        "friction": 0.0022,
+        "microRate": 2,
+        "popRate": 0.25,
+        "burstRate": 0.03,
+        "popAmp": 0.2,
+        "decayMs": 8,
+        "tick": 0
+      },
+      "mechanics": {
+        "wowPct": 0.0005,
+        "ripplePct": 0.00007,
+        "driftPct": 0.00012,
+        "flutterPct": 0.00016,
+        "eccPct": 0.00012
+      },
+      "cartridge": {
+        "freq": 10500,
+        "gain": 0.7,
+        "q": 0.9
+      },
+      "hfLoss": 0.6,
+      "inner": {
+        "outer": 16800,
+        "inner": 13500
+      },
+      "glare": 0.01,
+      "prompt": "2026 年首版 180g、拆封即藏：微爆 2/s、pop 0.25/s；wow 0.05%、偏心 0.012%。《太阳之子》的弦乐与合唱要透明：高频 -0.6dB、内圈 13.5kHz、glare 0.01：新碟的静，只有落针与导出槽提醒你介质。"
+    }
+  },
+  "tracks": {
+    "2-0": {
+      "id": "t-jiandanai",
+      "wearAdd": 0.08,
+      "noise": {
+        "crackleAdd": 0.008,
+        "microRateAdd": 3
+      },
+      "mechanics": {
+        "eccAdd": 0.0003
+      },
+      "prompt": "《简单爱》：初恋碟被反复播放的那一面，磨损 +0.08、微爆 +3/s、偏心 +0.03%；副歌前的静场能听见细碎颗粒，像青春本身的底噪。",
+      "n": 2,
+      "title": "简单爱"
+    },
+    "2-3": {
+      "id": "t-anjing",
+      "wearAdd": 0.05,
+      "noise": {
+        "hissAdd": 0.001
+      },
+      "prompt": "《安静》：钢琴弱奏最怕嘶声，但旧碟偏要留一点：嘶声 +1m、磨损 +0.05；弱段落沟槽呼吸可闻，强奏仍干净。",
+      "n": 2,
+      "title": "安静"
+    },
+    "4-1": {
+      "id": "t-qingtian",
+      "wearAdd": 0.06,
+      "noise": {
+        "microRateAdd": 3,
+        "popRateAdd": 0.3
+      },
+      "mechanics": {
+        "eccAdd": 0.0002
+      },
+      "prompt": "《晴天》：校园广播与操场边被唱旧的一面，磨损 +0.06、微爆 +3/s、pop +0.3/s、偏心 +0.02%；吉他扫弦带毛边，故事的小黄花落在颗粒里。",
+      "n": 4,
+      "title": "晴天"
+    },
+    "4-2": {
+      "id": "t-dongfengpo",
+      "wearAdd": 0.04,
+      "hfLossAdd": 0.3,
+      "glareAdd": 0.1,
+      "prompt": "《东风破》：古筝与琵琶的高频齿音被旧针磨圆：高频滚降 +0.3dB、内圈失真 glare +0.1、磨损 +0.04；二胡进来时沟槽微微发毛，像宣纸的纤维。",
+      "n": 4,
+      "title": "东风破"
+    },
+    "5-0": {
+      "id": "t-qilixiang",
+      "wearAdd": 0.05,
+      "noise": {
+        "burstRateAdd": 0.06
+      },
+      "prompt": "《七里香》：夏天车窗边放过的碟，划痕 burst +0.06/s、磨损 +0.05；窗外的麻雀声段偶发长划痕，秋刀鱼的味道带一点晒旧的暖。",
+      "n": 5,
+      "title": "七里香"
+    },
+    "6-0": {
+      "id": "t-yequ",
+      "wearAdd": 0.03,
+      "noise": {
+        "rumbleAdd": 0.06,
+        "humAdd": 0.00002
+      },
+      "prompt": "《夜曲》：夜听碟，低频段轴承隆隆 +0.06、微嗡 +0.02m；钢琴低音下面有一层城市地铁般的远 rumble，秃鹰盘旋处沟槽最脏。",
+      "n": 6,
+      "title": "夜曲"
+    },
+    "8-1": {
+      "id": "t-qinghuaci",
+      "wearAdd": 0.02,
+      "hfLossAdd": 0.2,
+      "cartridge": {
+        "gainAdd": 0.2
+      },
+      "prompt": "《青花瓷》：釉面光泽靠唱头谐振 +0.2dB 提一点，高频滚降 +0.2dB 收毛刺；天青色等烟雨处底噪极轻，像瓷面反光里的细纹。",
+      "n": 8,
+      "title": "青花瓷"
+    },
+    "9-0": {
+      "id": "t-daoxiang",
+      "wearAdd": 0.04,
+      "noise": {
+        "microRateAdd": 2
+      },
+      "prompt": "《稻香》：乡间路上放过的碟，微爆 +2/s、磨损 +0.04；虫鸣开场前的静场有田野般的细颗粒，回家吧回到最初的美好。",
+      "n": 9,
+      "title": "稻香"
+    },
+    "10-4": {
+      "id": "t-woluolei",
+      "wearAdd": 0.03,
+      "noise": {
+        "decayAdd": 4,
+        "burstRateAdd": 0.05
+      },
+      "prompt": "《我落泪情绪零碎》：本机完整版母带走同一条沟槽链，爆豆衰减 +4ms、burst +0.05/s、磨损 +0.03；情绪零碎处爆豆也零碎，长衰减像泪痕拖尾。",
+      "n": 10,
+      "title": "我落泪情绪零碎"
+    },
+    "13-2": {
+      "id": "t-shouxie",
+      "wearAdd": 0.02,
+      "noise": {
+        "frictionAdd": 0.001
+      },
+      "prompt": "《手写的从前》：纸面质感靠针尖摩擦 +1m 随电平起伏；手写段落吉他擦弦与沟槽摩擦同频，像铅笔在纸上的沙沙。",
+      "n": 13,
+      "title": "手写的从前"
+    },
+    "14-2": {
+      "id": "t-gaobaiqiqiu",
+      "wearAdd": 0.01,
+      "noise": {
+        "popRateAdd": 0.1
+      },
+      "prompt": "《告白气球》：巴黎街景段偶发轻 pop +0.1/s、磨损 +0.01；香颂手风琴要甜，底噪只作塞纳河面的细波。",
+      "n": 14,
+      "title": "告白气球"
+    },
+    "15-0": {
+      "id": "t-greatest",
+      "glareAdd": 0.05,
+      "cartridge": {
+        "freq": 10800
+      },
+      "prompt": "《最伟大的作品》：近新 180g 碟，唱头谐振移至 10.8kHz 给钢琴泛音一点空气，glare +0.05 让艺术摇滚的强奏带极轻沟槽眩光；玛格莉特的苹果落在几乎无声的沟槽里。",
+      "n": 15,
+      "title": "最伟大的作品"
+    }
+  }
+}

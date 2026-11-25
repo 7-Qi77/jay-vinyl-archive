@@ -152,6 +152,33 @@ function buildSheet() {
   $('clearHoard').addEventListener('hoard:delete', () => {
     cb.onClearAlbum?.(albums[cb.getIndex?.() ?? 0]?.n);
   });
+
+  // 压碟档案卡：提示词 + 附加磨损滑杆（驱动同一条物理链）
+  const dossier = document.createElement('section');
+  dossier.className = 'dossier';
+  dossier.innerHTML = `
+    <span class="dossier__kicker">PRESSING DOSSIER · 压碟档案</span>
+    <strong class="dossier__title" id="dossierTitle">—</strong>
+    <p class="dossier__prompt" id="dossierPrompt">档案加载中…</p>
+    <span class="dossier__meta" id="dossierMeta"></span>
+    <label class="dossier__wear">
+      <span>附加磨损</span>
+      <hose-slider id="wearHose" label="附加磨损" min="0" max="100" step="1" value="0"></hose-slider>
+      <output id="wearOut">+0%</output>
+    </label>`;
+  side.insertBefore(dossier, side.firstChild);
+  const wearHose = $('wearHose');
+  let off = 0;
+  try { off = Number(localStorage.getItem('jc-wear-offset')) || 0; } catch { off = 0; }
+  setProp(wearHose, 'value', Math.round(off * 200));
+  $('wearOut').textContent = `+${Math.round(off * 100)}%`;
+  const onWear = () => {
+    const v = Number(wearHose.value) || 0;
+    $('wearOut').textContent = `+${Math.round(v / 2)}%`;
+    emit('jc-retro:wear', { pct: v });
+  };
+  wearHose.addEventListener('input', onWear);
+  wearHose.addEventListener('change', onWear);
 }
 
 function buildMisc() {
@@ -321,6 +348,26 @@ function wire() {
     if (!hasEntry) { const h = $('deckHose'); if (h) setProp(h, 'value', 0); $('sheetThermo')?.reset?.(); }
   });
   window.addEventListener('jc:album', (e) => syncAlbum(e.detail.index));
+  window.addEventListener('jc:profile', (e) => {
+    const p = e.detail.profile;
+    const t = $('dossierTitle');
+    const pr = $('dossierPrompt');
+    const meta = $('dossierMeta');
+    if (!t || !pr || !meta) return;
+    if (!p) {
+      t.textContent = '—';
+      pr.textContent = '档案未加载';
+      meta.textContent = '';
+      return;
+    }
+    const alb = albums.find((a) => a.n === e.detail.n);
+    const trackName = e.detail.trackTitle
+      || document.querySelector(`.track[data-track="${e.detail.track}"] .track__name`)?.textContent
+      || alb?.tracks?.[e.detail.track] || '';
+    t.textContent = `${trackName || alb?.title || ''} · ${p.pressing || ''}`;
+    pr.textContent = p.prompt || '';
+    meta.textContent = `${p.era || ''} · 播放约 ${p.plays ?? '—'} 次 · 磨损 ${Math.round((p.wear || 0) * 100)}% · ${p.id || ''}`;
+  });
   window.addEventListener('jc:view', (e) => {
     const view = e.detail.view;
     iris();

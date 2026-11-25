@@ -1,14 +1,16 @@
 /**
- * 程序合成的黑胶音效：表面噪声、机械声、电机声与播放链音色。
- * 不含任何原曲片段。
+ * 程序合成的黑胶物理链：刻纹预加重 → wow/flutter → 沟槽（追踪失真/表面事件/摩擦/隆隆/嗡声）
+ * → RIAA 回放去加重 → 唱头谐振 → 限幅。不含任何原曲片段。
  *
  * 设计原则：
- * 1. 噪声分层（hiss / crackle / pops / rumble / hum），不再用一段 7 秒 mono
- *    噪声循环充当全部底噪；
- * 2. 优先使用 AudioWorklet 在音频线程生成噪声，避免主线程定时器抖动；
- *    不支持时自动回退到预生成立体声缓冲；
- * 3. 只用 DelayNode 做 wow/flutter，绝不反复修改 HTMLAudio 的 playbackRate；
- * 4. 所有增益变化都走 setTargetAtTime，避免切换状态时出现咔哒。
+ * 1. 噪声在「沟槽级」注入、之后才过 RIAA 回放 EQ：嘶声被去加重滚降、隆隆被抬升，
+ *    与真实唱针拾取顺序一致（vinyl-simulator 的 recording/playback round-trip 思路）；
+ * 2. RIAA 用 50/500/2122Hz 三时间常数的精确一阶节级联（IIRFilterNode），
+ *    刻纹节与回放节互为逆 → 往返幅频平直，色染只来自沟槽非线性；
+ * 3. 优先 AudioWorklet 在音频线程生成噪声与表面事件；不支持时回退预生成立体声缓冲；
+ * 4. wow/flutter/偏心 warp 只调制 DelayNode 与增益，绝不改 HTMLAudio 的 playbackRate；
+ * 5. 所有增益变化走 setTargetAtTime，避免切换咔哒；
+ * 6. 参数可由「压碟档案」(setProfile) 逐曲驱动，clean/daily/worn 保留为全局偏移。
  */
 
 const CONDITION_PRESETS = {
@@ -19,6 +21,22 @@ const CONDITION_PRESETS = {
 
 const CONDITION_NAMES = ['clean', 'daily', 'worn'];
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+/* RIAA 时间常数：3180µs(50Hz) / 318µs(500Hz) / 75µs(2122Hz)；
+   τp 为刻纹高频节的补充极点(~21kHz)，保证真 Proper 且与回放节严格互逆。 */
+const T1 = 3180e-6, T2 = 318e-6, T3 = 75e-6, TP = 7.5e-6;
+
+function riaaSections(ctx) {
+  const k = 2 * ctx.sampleRate;
+  const sec = (ta, tb) => {
+    const d = 1 + k * tb;
+    return { b: [(1 + k * ta) / d, (1 - k * ta) / d], a: [1, (1 - k * tb) / d] };
+  };
+  return {
+    rec: [sec(T1, T2), sec(T3, TP)],
+    play: [sec(T2, T1), sec(TP, T3)]
+  };
+}
 
 function hashSeed(value) {
   const str = String(value ?? 'vinyl');
@@ -60,7 +78,6 @@ export class VinylAudio {
     this.cue = false;
     this.progress = 0;
     this._iosNoiseUrl = null;
-    this._music = null;
     this._bufferGain = null;
     this._bufferSources = [];
     this._crackleBuffer = null;
@@ -76,20 +93,30 @@ export class VinylAudio {
     this._recordSeed = hashSeed('jay-vinyl');
     this._wear = 0;
     this._condition = 'daily';
+    this._profile = null;
     this._motorGain = null;
     this._motorOsc = [];
     this._rpm = 100 / 3;
     this._wowLfo = null;
     this._rippleLfo = null;
     this._flutterLfo = null;
+    this._eccLfo = null;
+    this._warpLfo = null;
     this._driftSource = null;
+    this._depths = {};
+    this._grooveBus = null;
+    this._musicPathGain = null;
+    this._warpAmp = null;
+    this._tracing = null;
+    this._innerLp = null;
+    this._cart = null;
+    this._wearShelf = null;
+    this._innerOuter = 16000;
+    this._innerInner = 11000;
+    this._hfLoss = 1.2;
     this._lastNoiseError = null;
   }
 
-  /**
-   * iOS 17+ 在顶层页面允许把 Audio Session 声明为 playback，
-   * 这样 Web Audio 可以穿过静音拨片；声明失败或旧 Safari 仍走媒体元素兜底。
-   */
   claimPlaybackSession() {
     if (this.iosFallback) return false;
     if (typeof navigator === 'undefined' || !navigator.audioSession) return false;
@@ -106,7 +133,6 @@ export class VinylAudio {
   }
 
   async unlock() {
-    // 必须在用户手势内先声明播放会话，再创建 / 恢复 AudioContext
     if (this._iosWebAudio) {
       const claimed = this.claimPlaybackSession();
       if (!claimed) this.iosFallback = true;
@@ -119,13 +145,11 @@ export class VinylAudio {
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return;
 
-    // playback 缓冲更从容，避免主线程忙时出现 underrun 式的断续
     this.ctx = new Ctx({ latencyHint: 'playback' });
     this.master = this.ctx.createGain();
     this.master.gain.value = this.enabled ? 0.9 : 0;
     this.master.connect(this.ctx.destination);
 
-    // 总线限幅：噪声层和音乐层都经过这里，防止爆豆叠峰值削波
     this.limiter = this.ctx.createDynamicsCompressor();
     this.limiter.threshold.value = -6;
     this.limiter.knee.value = 6;
@@ -138,9 +162,26 @@ export class VinylAudio {
     this.sfxBus.gain.value = 1;
     this.sfxBus.connect(this.limiter);
 
+    // 沟槽总线：音乐（worklet 携带或直连）+ 噪底 + 电机都汇到这里，之后才过回放 EQ。
+    // 沟槽总线：trimmed 音乐 + 沟槽噪声（噪底/worklet 总线 2）汇流，之后过回放 EQ。
+    // 音乐在追踪失真前已 trim 0.05（预加重峰值 ~×14，防 waveshaper 硬夹）；
+    // 噪声统一经 grooveTrim 0.05 进入同域；回放端 makeup ×20 复原，净增益 1。
+    this._grooveTrim = this.ctx.createGain();
+    this._grooveTrim.gain.value = 0.05;
+    this._grooveBus = this.ctx.createGain();
+    this._grooveBus.gain.value = 1;
+    this._grooveTrim.connect(this._grooveBus);
+    this._warpAmp = this.ctx.createGain();
+    this._warpAmp.gain.value = 1;
+    this._grooveBus.connect(this._warpAmp);
+    this._makeup = this.ctx.createGain();
+    this._makeup.gain.value = 20;
+    this._warpAmp.connect(this._makeup);
+    this._buildPlaybackEq(this.ctx, this._makeup, this.limiter);
+
     this.noiseBus = this.ctx.createGain();
     this.noiseBus.gain.value = 1;
-    this.noiseBus.connect(this.limiter);
+    this.noiseBus.connect(this._grooveTrim);
 
     this._bufferGain = this.ctx.createGain();
     this._bufferGain.gain.value = 1;
@@ -156,6 +197,39 @@ export class VinylAudio {
     else this._startWorkletNoise();
 
     if (this.ctx.state === 'suspended') await this.ctx.resume();
+  }
+
+  /* 回放端：RIAA 去加重 → 唱头谐振峰 → 磨损高频滚降 */
+  _buildPlaybackEq(ctx, input, output) {
+    let node = input;
+    if (ctx.createIIRFilter) {
+      const { play } = riaaSections(ctx);
+      for (const s of play) {
+        const f = ctx.createIIRFilter(s.b, s.a);
+        node.connect(f);
+        node = f;
+      }
+    } else {
+      // 老浏览器回退：两段 shelf 近似
+      const ls = ctx.createBiquadFilter();
+      ls.type = 'lowshelf'; ls.frequency.value = 90; ls.gain.value = 1.2;
+      const hs = ctx.createBiquadFilter();
+      hs.type = 'highshelf'; hs.frequency.value = 12000; hs.gain.value = -1.2;
+      node.connect(ls); ls.connect(hs); node = hs;
+    }
+    this._cart = ctx.createBiquadFilter();
+    this._cart.type = 'peaking';
+    this._cart.frequency.value = 9500;
+    this._cart.Q.value = 0.9;
+    this._cart.gain.value = 1.2;
+    this._wearShelf = ctx.createBiquadFilter();
+    this._wearShelf.type = 'highshelf';
+    this._wearShelf.frequency.value = 10000;
+    this._wearShelf.gain.value = -this._hfLoss;
+    node.connect(this._cart);
+    this._cart.connect(this._wearShelf);
+    this._wearShelf.connect(output);
+    this.musicGain = this._wearShelf;
   }
 
   setEnabled(on) {
@@ -175,7 +249,6 @@ export class VinylAudio {
     this.master.gain.setTargetAtTime(this.enabled ? 0.9 : 0, now, 0.08);
   }
 
-  /** 音乐播放状态：播放时压低底噪；iOS 播放时暂停独立底噪，避免双音频抢会话 */
   setDucking(on) {
     this.ducking = Boolean(on);
     if (this.iosNoise) {
@@ -193,20 +266,17 @@ export class VinylAudio {
     this._setMotor(this.ducking);
   }
 
-  /** 手动 cue：只抬高沟槽噪声，不改变音乐播放状态 */
   setCue(on) {
     this.cue = Boolean(on);
     this._applyNoiseLevels();
   }
 
-  /** 唱片状态：clean / daily / worn */
   setCondition(condition) {
     this._condition = CONDITION_NAMES.includes(condition) ? condition : 'daily';
     this._applyNoiseLevels();
     this._applyIosBedVolume();
   }
 
-  /** 换唱片/换曲：确定性种子 + 累计磨损，决定噪底图案和密度 */
   setRecord({ seed, wear, condition } = {}) {
     if (seed !== undefined) {
       const nextSeed = hashSeed(seed);
@@ -225,10 +295,250 @@ export class VinylAudio {
     }
     this._applyNoiseLevels();
     this._applyIosBedVolume();
+    this._applyProfileTone();
   }
 
-  /* ── 噪声层 ───────────────────────────────────────────── */
+  /** 压碟档案：逐曲驱动噪声 taxonomy / 机械深度 / 唱头 / 磨损音色 */
+  setProfile(profile) {
+    this._profile = profile || null;
+    if (profile) {
+      this.setRecord({
+        seed: profile.seed ?? profile.id,
+        wear: profile.wear,
+        condition: profile.condition
+      });
+    }
+    this._applyNoiseLevels();
+    this._applyProfileTone();
+    this._applyMechanics();
+  }
 
+  _noiseBase() {
+    const preset = CONDITION_PRESETS[this._condition] || CONDITION_PRESETS.daily;
+    const p = this._profile?.noise;
+    return p ? { ...preset, ...p } : preset;
+  }
+
+  _applyNoiseLevels() {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const base = this._noiseBase();
+    const wear = clamp(this._wear, 0, 1);
+    const progress = clamp(this.progress, 0, 1);
+    const scale = this.cue ? 0.88 : this.ducking ? 0.56 : 1;
+    const crackle = (base.crackle + wear * 0.014 + progress * 0.009) * scale;
+    const hiss = (base.hiss + wear * 0.0018 + progress * 0.0010) * scale;
+    const rumble = (base.rumble + wear * 0.050) * scale;
+    const hum = base.hum + (this._condition === 'worn' ? 0.00010 : 0);
+
+    const setGain = (gain, value, tau = 0.28) => {
+      if (gain) gain.gain.setTargetAtTime(value, now, tau);
+    };
+    setGain(this._bufferGains.crackle, crackle);
+    setGain(this._bufferGains.hiss, hiss);
+    setGain(this._bufferGains.rumble, rumble);
+    setGain(this._bufferGains.hum, hum);
+
+    if (this._workletNode) {
+      const setParam = (name, value, tau = 0.28) => {
+        const param = this._workletNode?.parameters.get(name);
+        if (param) param.setTargetAtTime(value, now, tau);
+      };
+      setParam('crackleLevel', crackle);
+      setParam('hissLevel', hiss);
+      setParam('rumbleLevel', rumble);
+      setParam('humLevel', hum);
+      setParam('progress', progress, 0.4);
+      setParam('frictionLevel', (base.friction ?? 0.004) * scale);
+      setParam('microRate', base.microRate ?? 6);
+      setParam('popRate', base.popRate ?? 0.8);
+      setParam('burstRate', base.burstRate ?? 0.12);
+      setParam('popAmp', base.popAmp ?? 0.35);
+      setParam('decayMs', base.decayMs ?? 12);
+      const tick = base.tick ?? 0;
+      setParam('tickLevel', tick + (wear > 0.45 ? (wear - 0.45) * 0.10 : 0));
+    }
+  }
+
+  /* 唱头/磨损/内圈/追踪失真：档案 + 磨损 + 唱针位置共同决定 */
+  _applyProfileTone() {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const p = this._profile || {};
+    const wear = clamp(this._wear, 0, 1);
+    const progress = clamp(this.progress, 0, 1);
+    if (this._cart) {
+      const c = p.cartridge || {};
+      this._cart.frequency.setTargetAtTime(c.freq ?? 9500, now, 0.3);
+      this._cart.gain.setTargetAtTime(c.gain ?? 1.2, now, 0.3);
+      this._cart.Q.setTargetAtTime(c.q ?? 0.9, now, 0.3);
+    }
+    this._hfLoss = (p.hfLoss ?? 1.2) + wear * 1.4;
+    if (this._wearShelf) {
+      this._wearShelf.gain.setTargetAtTime(-this._hfLoss - progress * 1.1, now, 0.4);
+    }
+    const inner = p.inner || {};
+    this._innerOuter = inner.outer ?? 16000;
+    this._innerInner = inner.inner ?? 11000;
+    if (this._innerLp) {
+      this._innerLp.frequency.setTargetAtTime(
+        this._innerOuter - progress * (this._innerOuter - this._innerInner), now, 0.4);
+    }
+    if (this._tracing) {
+      const drive = 1.05 + wear * 0.6 + progress * 0.45 + (p.glare ?? 0) * 0.6;
+      const curve = new Float32Array(1024);
+      for (let i = 0; i < curve.length; i++) {
+        const x = (i / (curve.length - 1)) * 2 - 1;
+        curve[i] = Math.tanh(x * drive) / drive;
+      }
+      this._tracing.curve = curve;
+    }
+  }
+
+  /* 机械深度：wow / 二次纹波 / 漂移 / flutter / 偏心 warp，全部只调制 Delay 与增益 */
+  _applyMechanics() {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const p = this._profile?.mechanics || {};
+    const base = this._rpm / 60;
+    const depthFor = (pct, freq) => pct / (2 * Math.PI * freq);
+    const set = (key, pct, freq) => {
+      const g = this._depths[key];
+      if (g) g.gain.setTargetAtTime(depthFor(pct, freq), now, 0.3);
+    };
+    set('wow', p.wowPct ?? 0.0009, base);
+    set('ripple', p.ripplePct ?? 0.00012, base * 2);
+    set('drift', p.driftPct ?? 0.00022, 1 / 24);
+    set('flutter', p.flutterPct ?? 0.00030, 7.2);
+    set('ecc', p.eccPct ?? 0.0004, base);
+    if (this._warpAmp && this._depths.warpAmp) {
+      this._depths.warpAmp.gain.setTargetAtTime((p.eccPct ?? 0.0004) * 0.45, now, 0.3);
+    }
+  }
+
+  setNeedleProgress(p) {
+    const v = Number(p);
+    this.progress = Number.isFinite(v) ? clamp(v, 0, 1) : this.progress;
+    this._applyNoiseLevels();
+    this._applyProfileTone();
+  }
+
+  setRpm(rpm) {
+    this._rpm = Number(rpm) === 45 ? 45 : 100 / 3;
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const base = this._rpm / 60;
+    for (const [lfo, mult] of [[this._wowLfo, 1], [this._rippleLfo, 2], [this._eccLfo, 1], [this._warpLfo, 1]]) {
+      if (lfo) lfo.frequency.setTargetAtTime(base * mult, now, 0.2);
+    }
+    this._workletNode?.port.postMessage({ type: 'rpm', rpm: this._rpm });
+    this._applyMechanics();
+  }
+
+  /* ── 音乐接入：刻纹预加重 → wow → 沟槽带限/追踪 → 沟槽总线 ── */
+  attachElement(el) {
+    if (!this.ctx || this._elemSrc || !this.limiter) return;
+    try {
+      const ctx = this.ctx;
+      const src = ctx.createMediaElementSource(el);
+      let node = src;
+      if (ctx.createIIRFilter) {
+        const { rec } = riaaSections(ctx);
+        for (const s of rec) {
+          const f = ctx.createIIRFilter(s.b, s.a);
+          node.connect(f);
+          node = f;
+        }
+      } else {
+        const hp0 = ctx.createBiquadFilter();
+        hp0.type = 'highpass'; hp0.frequency.value = 32; hp0.Q.value = 0.6;
+        node.connect(hp0); node = hp0;
+      }
+
+      const wow = ctx.createDelay(0.05);
+      wow.delayTime.value = 0.015;
+      const mkLfo = (freq, key) => {
+        const lfo = ctx.createOscillator();
+        lfo.type = 'sine';
+        lfo.frequency.value = freq;
+        const g = ctx.createGain();
+        g.gain.value = 0;
+        lfo.connect(g).connect(wow.delayTime);
+        lfo.start();
+        this._depths[key] = g;
+        return lfo;
+      };
+      const base = this._rpm / 60;
+      this._wowLfo = mkLfo(base, 'wow');
+      this._rippleLfo = mkLfo(base * 2, 'ripple');
+      this._eccLfo = mkLfo(base, 'ecc');
+      this._flutterLfo = mkLfo(7.2, 'flutter');
+
+      // 慢速机械漂移：24 秒周期三个低频分量
+      const driftBuffer = ctx.createBuffer(1, 8000 * 24, 8000);
+      const driftData = driftBuffer.getChannelData(0);
+      const phase = (this._recordSeed >>> 0) % 3600 / 3600 * Math.PI * 2;
+      for (let i = 0; i < driftData.length; i++) {
+        const t = i / 8000;
+        driftData[i] = Math.sin(2 * Math.PI * t / 24 + phase) * 0.55
+          + Math.sin(2 * Math.PI * t * 2 / 24 + phase * 1.7) * 0.30
+          + Math.sin(2 * Math.PI * t * 3 / 24 + phase * 2.3) * 0.15;
+      }
+      const driftSource = ctx.createBufferSource();
+      driftSource.buffer = driftBuffer;
+      driftSource.loop = true;
+      const driftDepth = ctx.createGain();
+      driftDepth.gain.value = 0;
+      driftSource.connect(driftDepth).connect(wow.delayTime);
+      driftSource.start();
+      this._depths.drift = driftDepth;
+      this._driftSource = driftSource;
+
+      // 偏心 warp 的幅度端：每转一次的轻微音量起伏
+      const warpLfo = ctx.createOscillator();
+      warpLfo.type = 'sine';
+      warpLfo.frequency.value = base;
+      const warpDepth = ctx.createGain();
+      warpDepth.gain.value = 0;
+      warpLfo.connect(warpDepth).connect(this._warpAmp.gain);
+      warpLfo.start();
+      this._depths.warpAmp = warpDepth;
+      this._warpLfo = warpLfo;
+
+      // 沟槽带限 + 追踪失真 + 内圈滚降
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass'; hp.frequency.value = 28; hp.Q.value = 0.6;
+      const cutLp = ctx.createBiquadFilter();
+      cutLp.type = 'lowpass'; cutLp.frequency.value = 16500; cutLp.Q.value = 0.5;
+      // 沟槽 trim 放在追踪失真之前：预加重峰值 ~×14，不衰减会让 waveshaper 硬夹
+      const musicTrim = ctx.createGain();
+      musicTrim.gain.value = 0.05;
+      const tracing = ctx.createWaveShaper();
+      tracing.oversample = '2x';
+      this._tracing = tracing;
+      const innerLp = ctx.createBiquadFilter();
+      innerLp.type = 'lowpass'; innerLp.frequency.value = this._innerOuter; innerLp.Q.value = 0.5;
+      this._innerLp = innerLp;
+
+      node.connect(wow).connect(hp).connect(cutLp).connect(musicTrim).connect(tracing).connect(innerLp);
+
+      this._musicPathGain = ctx.createGain();
+      this._musicPathGain.gain.value = this._workletReady ? 0 : 1;
+      innerLp.connect(this._musicPathGain).connect(this._grooveBus);
+      if (this._workletNode) innerLp.connect(this._workletNode);
+      this._pendingWorkletInput = innerLp;
+
+      this._music = { src, wow, hp, cutLp, tracing, innerLp };
+      this._elemSrc = src;
+      this._applyMechanics();
+      this._applyProfileTone();
+      this.setRpm(this._rpm);
+    } catch (err) {
+      console.info('Web Audio 播放链接入失败，使用元素直出。', err);
+    }
+  }
+
+  /* ── 噪底缓冲（回退路径 / 离线渲染共用） ── */
   _buildNoiseBuffers() {
     if (!this.ctx || this._crackleBuffer) return;
     this._crackleBuffer = this._buildCrackleBuffer(this.ctx);
@@ -243,11 +553,9 @@ export class VinylAudio {
     crackle.buffer = this._crackleBuffer;
     crackle.loop = true;
     const crackleHp = ctx.createBiquadFilter();
-    crackleHp.type = 'highpass';
-    crackleHp.frequency.value = 190;
+    crackleHp.type = 'highpass'; crackleHp.frequency.value = 190;
     const crackleLp = ctx.createBiquadFilter();
-    crackleLp.type = 'lowpass';
-    crackleLp.frequency.value = 6800;
+    crackleLp.type = 'lowpass'; crackleLp.frequency.value = 6800;
     const crackleGain = ctx.createGain();
     crackleGain.gain.value = 0.05;
     crackle.connect(crackleHp).connect(crackleLp).connect(crackleGain).connect(this._bufferGain);
@@ -257,9 +565,7 @@ export class VinylAudio {
     hiss.buffer = this._hissBuffer;
     hiss.loop = true;
     const hissBp = ctx.createBiquadFilter();
-    hissBp.type = 'bandpass';
-    hissBp.frequency.value = 10500;
-    hissBp.Q.value = 0.55;
+    hissBp.type = 'bandpass'; hissBp.frequency.value = 10500; hissBp.Q.value = 0.55;
     const hissGain = ctx.createGain();
     hissGain.gain.value = 0.009;
     hiss.connect(hissBp).connect(hissGain).connect(this._bufferGain);
@@ -269,8 +575,7 @@ export class VinylAudio {
     rumble.buffer = this._rumbleBuffer;
     rumble.loop = true;
     const rumbleLp = ctx.createBiquadFilter();
-    rumbleLp.type = 'lowpass';
-    rumbleLp.frequency.value = 140;
+    rumbleLp.type = 'lowpass'; rumbleLp.frequency.value = 140;
     const rumbleGain = ctx.createGain();
     rumbleGain.gain.value = 0.4;
     rumble.connect(rumbleLp).connect(rumbleGain).connect(this._bufferGain);
@@ -280,14 +585,12 @@ export class VinylAudio {
     hum.buffer = this._humBuffer;
     hum.loop = true;
     const humLp = ctx.createBiquadFilter();
-    humLp.type = 'lowpass';
-    humLp.frequency.value = 420;
+    humLp.type = 'lowpass'; humLp.frequency.value = 420;
     const humGain = ctx.createGain();
     humGain.gain.value = 0;
     hum.connect(humLp).connect(humGain).connect(this._bufferGain);
     this._bufferGains.hum = humGain;
 
-    // 确定性种子：从 0..1 的相位开始，循环图案相同也能错开听感
     const phase = (this._recordSeed % 1000) / 1000;
     const startAt = this._crackleBuffer.duration * phase * 0.82;
     this._bufferSources = [crackle, hiss, rumble, hum];
@@ -315,64 +618,33 @@ export class VinylAudio {
       await this.ctx.audioWorklet.addModule(moduleUrl);
       if (!window.AudioWorkletNode) throw new Error('AudioWorkletNode unavailable');
       const node = new AudioWorkletNode(this.ctx, 'vinyl-noise', {
-        numberOfInputs: 0,
-        numberOfOutputs: 1,
-        outputChannelCount: [2],
+        numberOfInputs: 1,
+        numberOfOutputs: 3,
+        outputChannelCount: [2, 2, 2],
         processorOptions: { seed: this._recordSeed }
       });
-      const gain = this.ctx.createGain();
-      gain.gain.value = 0;
-      node.connect(gain).connect(this.noiseBus);
+      node.connect(this._grooveBus);
+      // 冲击总线 → 唱头谐振（绕过 RIAA 去加重）；沟槽噪声总线 → 统一 trim
+      node.connect(this._cart, 1);
+      node.connect(this._grooveTrim, 2);
       this._workletNode = node;
-      this._workletGain = gain;
       this._workletSeed = this._recordSeed;
       this._workletReady = true;
+      if (this._pendingWorkletInput) this._pendingWorkletInput.connect(node);
+      if (this._musicPathGain) {
+        this._musicPathGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.12);
+      }
+      node.port.postMessage({ type: 'rpm', rpm: this._rpm });
       this._applyNoiseLevels();
-
-      const now = this.ctx.currentTime;
-      gain.gain.setTargetAtTime(1, now, 0.12);
-      this._bufferGain.gain.setTargetAtTime(0, now, 0.12);
+      this._bufferGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.12);
       setTimeout(() => {
         if (this._workletReady) this._stopBufferNoise();
       }, 420);
     } catch (err) {
       this._lastNoiseError = String(err?.message || err);
       this._workletReady = false;
-      // 回退到已经启动的立体声缓冲，不重新开始音乐
+      if (this._musicPathGain) this._musicPathGain.gain.value = 1;
       console.info('AudioWorklet 不可用，使用缓冲噪底回退。', err);
-    }
-  }
-
-  _applyNoiseLevels() {
-    if (!this.ctx) return;
-    const now = this.ctx.currentTime;
-    const preset = CONDITION_PRESETS[this._condition] || CONDITION_PRESETS.daily;
-    const wear = clamp(this._wear, 0, 1);
-    const progress = clamp(this.progress, 0, 1);
-    const scale = this.cue ? 0.88 : this.ducking ? 0.56 : 1;
-    const crackle = (preset.crackle + wear * 0.014 + progress * 0.009) * scale;
-    const hiss = (preset.hiss + wear * 0.0018 + progress * 0.0010) * scale;
-    const rumble = (preset.rumble + wear * 0.050) * scale;
-    const hum = preset.hum + (this._condition === 'worn' ? 0.00010 : 0);
-
-    const setGain = (gain, value, tau = 0.28) => {
-      if (gain) gain.gain.setTargetAtTime(value, now, tau);
-    };
-    setGain(this._bufferGains.crackle, crackle);
-    setGain(this._bufferGains.hiss, hiss);
-    setGain(this._bufferGains.rumble, rumble);
-    setGain(this._bufferGains.hum, hum);
-
-    if (this._workletNode) {
-      const setParam = (name, value, tau = 0.28) => {
-        const param = this._workletNode?.parameters.get(name);
-        if (param) param.setTargetAtTime(value, now, tau);
-      };
-      setParam('crackleLevel', crackle);
-      setParam('hissLevel', hiss);
-      setParam('rumbleLevel', rumble);
-      setParam('humLevel', hum);
-      setParam('progress', progress, 0.4);
     }
   }
 
@@ -384,10 +656,7 @@ export class VinylAudio {
     for (let ch = 0; ch < 2; ch++) {
       const data = buffer.getChannelData(ch);
       const rng = makeRng(this._recordSeed + ch * 7919);
-      // 极低的表面底噪，真正的颗粒由稀疏爆豆和 burst 负责
       for (let i = 0; i < len; i++) data[i] = (rng() * 2 - 1) * 0.0025;
-
-      // 细碎爆豆：约 5 次/秒，短、尖、左右独立
       const pops = 84;
       for (let p = 0; p < pops; p++) {
         const pos = Math.floor(rng() * (len - 2400));
@@ -398,8 +667,6 @@ export class VinylAudio {
           data[pos + i] += sign * amp * Math.exp(-i / decay) * (0.3 + rng() * 0.7);
         }
       }
-
-      // 偶发划痕 burst：比单颗爆豆长，音量更克制
       for (let s = 0; s < 9; s++) {
         const pos = Math.floor(rng() * (len - 5000));
         const decay = 80 + rng() * 260;
@@ -408,8 +675,6 @@ export class VinylAudio {
           data[pos + i] += (rng() * 2 - 1) * amp * Math.exp(-i / decay);
         }
       }
-
-      // 首尾交叉淡化，循环接缝不出现“咔哒”
       const fade = Math.floor(rate * 0.22);
       for (let i = 0; i < fade; i++) {
         const t = i / fade;
@@ -485,7 +750,6 @@ export class VinylAudio {
     gain.gain.value = 0;
     gain.connect(this.noiseBus);
     this._motorGain = gain;
-    // 低转速电机的低频嗡声，不作为主音色，只在播放时极轻地托住底盘
     for (const [freq, amp] of [[47, 0.55], [94, 0.20], [141, 0.08]]) {
       const osc = ctx.createOscillator();
       osc.type = 'sine';
@@ -504,134 +768,165 @@ export class VinylAudio {
     this._motorGain.gain.setTargetAtTime(on ? 0.0011 : 0.00018, now, 0.32);
   }
 
-  /* ── 沟槽声学：唱针越靠内圈，表面噪声越明显、高频越收 ── */
-  setNeedleProgress(p) {
-    this.progress = clamp(Number(p) || 0, 0, 1);
-    const now = this.ctx?.currentTime;
-    if (now !== undefined) {
-      if (this._music?.innerLp) {
-        this._music.innerLp.frequency.setTargetAtTime(16000 - this.progress * 2100, now, 0.4);
-      }
-      if (this._music?.highShelf) {
-        this._music.highShelf.gain.setTargetAtTime(-1.2 - this.progress * 1.1, now, 0.4);
-      }
+  /* ── 离线渲染：与实时链同构图，供 A/B 与确定性自检 ── */
+  async renderOffline(sourceBuffer, { profile = null, noise = true, seconds = 0, from = 0, progress = 0.35 } = {}) {
+    const rate = 44100;
+    const dur = seconds > 0 ? seconds : sourceBuffer.duration - from;
+    const frames = Math.max(1, Math.floor(dur * rate));
+    const ctx = new OfflineAudioContext(2, frames, rate);
+    const master = ctx.createGain();
+    master.gain.value = 0.9;
+    master.connect(ctx.destination);
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -6; limiter.knee.value = 6; limiter.ratio.value = 4;
+    limiter.attack.value = 0.003; limiter.release.value = 0.25;
+    limiter.connect(master);
+
+    const grooveTrim = ctx.createGain();
+    grooveTrim.gain.value = 0.05;
+    const grooveBus = ctx.createGain();
+    grooveTrim.connect(grooveBus);
+    const warpAmp = ctx.createGain();
+    warpAmp.gain.value = 1;
+    grooveBus.connect(warpAmp);
+    const makeup = ctx.createGain();
+    makeup.gain.value = 20;
+    warpAmp.connect(makeup);
+    // 回放 EQ（独立实例，不碰实时字段）
+    let node = makeup;
+    const { rec, play } = riaaSections(ctx);
+    for (const s of play) {
+      const f = ctx.createIIRFilter(s.b, s.a);
+      node.connect(f); node = f;
     }
-    this._applyNoiseLevels();
-  }
+    const cart = ctx.createBiquadFilter();
+    cart.type = 'peaking';
+    cart.frequency.value = profile?.cartridge?.freq ?? 9500;
+    cart.Q.value = profile?.cartridge?.q ?? 0.9;
+    cart.gain.value = profile?.cartridge?.gain ?? 1.2;
+    const wearShelf = ctx.createBiquadFilter();
+    wearShelf.type = 'highshelf'; wearShelf.frequency.value = 10000;
+    wearShelf.gain.value = -((profile?.hfLoss ?? 1.2) + (profile?.wear ?? 0) * 1.4 + progress * 1.1);
+    node.connect(cart); cart.connect(wearShelf); wearShelf.connect(limiter);
 
-  /** 与唱盘转速锁定：33⅓ 转约 0.5556Hz，45 转 0.75Hz */
-  setRpm(rpm) {
-    this._rpm = Number(rpm) === 45 ? 45 : 100 / 3;
-    if (!this.ctx) return;
-    const now = this.ctx.currentTime;
-    const base = this._rpm / 60;
-    if (this._wowLfo) this._wowLfo.frequency.setTargetAtTime(base, now, 0.2);
-    if (this._rippleLfo) this._rippleLfo.frequency.setTargetAtTime(base * 2, now, 0.2);
-  }
+    const src = ctx.createBufferSource();
+    src.buffer = sourceBuffer;
+    let m = src;
+    for (const s of rec) {
+      const f = ctx.createIIRFilter(s.b, s.a);
+      m.connect(f); m = f;
+    }
+    const wow = ctx.createDelay(0.05);
+    wow.delayTime.value = 0.015;
+    const mech = profile?.mechanics || {};
+    const base = (100 / 3) / 60;
+    const mk = (freq, pct) => {
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = freq;
+      const g = ctx.createGain();
+      g.gain.value = pct / (2 * Math.PI * freq);
+      lfo.connect(g).connect(wow.delayTime);
+      lfo.start();
+    };
+    mk(base, mech.wowPct ?? 0.0009);
+    mk(base * 2, mech.ripplePct ?? 0.00012);
+    mk(base, mech.eccPct ?? 0.0004);
+    mk(1 / 24, mech.driftPct ?? 0.00022);
+    mk(7.2, mech.flutterPct ?? 0.00030);
+    const wl = ctx.createOscillator();
+    wl.frequency.value = base;
+    const wg = ctx.createGain();
+    wg.gain.value = (mech.eccPct ?? 0.0004) * 0.45;
+    wl.connect(wg).connect(warpAmp.gain);
+    wl.start();
 
-  /* ── 音频接入：RIAA 近似倾斜 + 轻饱和 + wow/flutter，不用实时变速 ── */
-  attachElement(el) {
-    if (!this.ctx || this._elemSrc || !this.limiter) return;
-    try {
-      const src = this.ctx.createMediaElementSource(el);
-      // 去超低频与直流；RIAA 只做回放端近似倾斜，不改动母带整体亮度
-      const hp = this.ctx.createBiquadFilter();
-      hp.type = 'highpass';
-      hp.frequency.value = 32;
-      hp.Q.value = 0.6;
-      const lowShelf = this.ctx.createBiquadFilter();
-      lowShelf.type = 'lowshelf';
-      lowShelf.frequency.value = 90;
-      lowShelf.gain.value = 1.2;
-      const highShelf = this.ctx.createBiquadFilter();
-      highShelf.type = 'highshelf';
-      highShelf.frequency.value = 12000;
-      highShelf.gain.value = -1.2;
-      const innerLp = this.ctx.createBiquadFilter();
-      innerLp.type = 'lowpass';
-      innerLp.frequency.value = 16000;
-      innerLp.Q.value = 0.5;
-      const warmth = this.ctx.createWaveShaper();
-      const curve = new Float32Array(1024);
-      for (let i = 0; i < curve.length; i++) {
-        const x = (i / (curve.length - 1)) * 2 - 1;
-        curve[i] = Math.tanh(x * 1.05) / 1.05;
-      }
-      warmth.curve = curve;
-      warmth.oversample = 'none';
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass'; hp.frequency.value = 28; hp.Q.value = 0.6;
+    const cutLp = ctx.createBiquadFilter();
+    cutLp.type = 'lowpass'; cutLp.frequency.value = 16500; cutLp.Q.value = 0.5;
+    const musicTrim = ctx.createGain();
+    musicTrim.gain.value = 0.05;
+    const tracing = ctx.createWaveShaper();
+    const drive = 1.05 + (profile?.wear ?? 0) * 0.6 + progress * 0.45 + (profile?.glare ?? 0) * 0.6;
+    const curve = new Float32Array(1024);
+    for (let i = 0; i < curve.length; i++) {
+      const x = (i / (curve.length - 1)) * 2 - 1;
+      curve[i] = Math.tanh(x * drive) / drive;
+    }
+    tracing.curve = curve;
+    const innerLp = ctx.createBiquadFilter();
+    innerLp.type = 'lowpass';
+    innerLp.frequency.value = (profile?.inner?.outer ?? 16000)
+      - progress * ((profile?.inner?.outer ?? 16000) - (profile?.inner?.inner ?? 11000));
+    innerLp.Q.value = 0.5;
+    const musicPath = ctx.createGain();
+    musicPath.gain.value = 1;
+    m.connect(wow).connect(hp).connect(cutLp).connect(musicTrim).connect(tracing).connect(innerLp);
+    innerLp.connect(musicPath).connect(grooveBus);
 
-      // wow + flutter：主 wow 与唱盘转速锁定，叠加二次旋转纹波、慢速随机漂移
-      // 和固定 flutter；全部只调制 DelayNode，不修改 playbackRate。
-      const wow = this.ctx.createDelay(0.05);
-      wow.delayTime.value = 0.015;
-      const wowLfo = this.ctx.createOscillator();
-      wowLfo.type = 'sine';
-      wowLfo.frequency.value = this._rpm / 60;
-      const wowDepth = this.ctx.createGain();
-      wowDepth.gain.value = 0.00028;
-      wowLfo.connect(wowDepth).connect(wow.delayTime);
-      wowLfo.start();
-
-      // 唱盘每转一次的二次谐波，让 wow 不再是完美正弦
-      const rippleLfo = this.ctx.createOscillator();
-      rippleLfo.type = 'sine';
-      rippleLfo.frequency.value = (this._rpm / 60) * 2;
-      const rippleDepth = this.ctx.createGain();
-      rippleDepth.gain.value = 0.000035;
-      rippleLfo.connect(rippleDepth).connect(wow.delayTime);
-      rippleLfo.start();
-
-      // 很慢的机械漂移：24 秒周期内的三个低频分量，幅度极小
-      const driftBuffer = this.ctx.createBuffer(1, 8000 * 24, 8000);
-      const driftData = driftBuffer.getChannelData(0);
-      const phase = (this._recordSeed >>> 0) % 3600 / 3600 * Math.PI * 2;
-      for (let i = 0; i < driftData.length; i++) {
-        const t = i / 8000;
-        driftData[i] = Math.sin(2 * Math.PI * t / 24 + phase) * 0.55
-          + Math.sin(2 * Math.PI * t * 2 / 24 + phase * 1.7) * 0.30
-          + Math.sin(2 * Math.PI * t * 3 / 24 + phase * 2.3) * 0.15;
-      }
-      const driftSource = this.ctx.createBufferSource();
-      driftSource.buffer = driftBuffer;
-      driftSource.loop = true;
-      const driftDepth = this.ctx.createGain();
-      driftDepth.gain.value = 0.000065;
-      driftSource.connect(driftDepth).connect(wow.delayTime);
-      driftSource.start();
-
-      const flutterLfo = this.ctx.createOscillator();
-      flutterLfo.type = 'sine';
-      flutterLfo.frequency.value = 7.2;
-      const flutterDepth = this.ctx.createGain();
-      flutterDepth.gain.value = 0.000045;
-      flutterLfo.connect(flutterDepth).connect(wow.delayTime);
-      flutterLfo.start();
-
-      this._wowLfo = wowLfo;
-      this._rippleLfo = rippleLfo;
-      this._flutterLfo = flutterLfo;
-      this._driftSource = driftSource;
-
-      const dry = this.ctx.createGain();
-      dry.gain.value = 0.96;
-
-      src.connect(hp).connect(lowShelf).connect(highShelf).connect(innerLp)
-        .connect(warmth).connect(wow).connect(dry).connect(this.limiter);
-      this._music = {
-        src, hp, lowShelf, highShelf, innerLp, warmth, wow, wowLfo,
-        rippleLfo, flutterLfo, driftSource, dry
+    if (noise) {
+      const seed = hashSeed(profile?.seed ?? profile?.id ?? 'jay-vinyl');
+      const savedSeed = this._recordSeed;
+      this._recordSeed = seed;
+      const crackleB = this._buildCrackleBuffer(ctx);
+      const hissB = this._buildHissBuffer(ctx);
+      const rumbleB = this._buildRumbleBuffer(ctx);
+      const humB = this._buildHumBuffer(ctx);
+      this._recordSeed = savedSeed;
+      const nb = profile?.noise || CONDITION_PRESETS[profile?.condition || 'daily'];
+      const beds = [];
+      const mkSrc = (buf, type, freq, q, gainVal) => {
+        const s = ctx.createBufferSource();
+        s.buffer = buf; s.loop = true;
+        const f = ctx.createBiquadFilter();
+        f.type = type; f.frequency.value = freq; if (q) f.Q.value = q;
+        const g = ctx.createGain();
+        g.gain.value = gainVal;
+        s.connect(f).connect(g).connect(grooveTrim);
+        s.start(0, (seed % 1000) / 1000 * buf.duration * 0.8);
+        beds.push(g);
+        return g;
       };
-      this.musicGain = dry;
-      this._elemSrc = src;
-      this.setNeedleProgress(this.progress);
-      this.setRpm(this._rpm);
-    } catch (err) {
-      // 不支持时元素直出（iOS 静音拨片路径也走这里）
-      console.info('Web Audio 播放链接入失败，使用元素直出。', err);
+      mkSrc(crackleB, 'highpass', 190, 0, nb.crackle ?? 0.05);
+      mkSrc(hissB, 'bandpass', 10500, 0.55, nb.hiss ?? 0.009);
+      mkSrc(rumbleB, 'lowpass', 140, 0, nb.rumble ?? 0.4);
+      mkSrc(humB, 'lowpass', 420, 0, nb.hum ?? 0);
+      // 事件化表面噪声：离线同走 worklet（泊松 micro/pop/burst + 固定沟槽缺陷图）
+      try {
+        await ctx.audioWorklet.addModule(new URL('./vinyl-worklet.js', import.meta.url));
+        const wn = new AudioWorkletNode(ctx, 'vinyl-noise', {
+          numberOfInputs: 1,
+          numberOfOutputs: 3,
+          outputChannelCount: [2, 2, 2],
+          processorOptions: { seed, rpm: 100 / 3 }
+        });
+        const wear = profile?.wear ?? 0;
+        const setP = (name, v) => { const p = wn.parameters.get(name); if (p) p.value = v; };
+        setP('crackleLevel', (nb.crackle ?? 0.05) + wear * 0.014 + progress * 0.009);
+        setP('hissLevel', (nb.hiss ?? 0.009) + wear * 0.0018 + progress * 0.0010);
+        setP('rumbleLevel', (nb.rumble ?? 0.4) + wear * 0.05);
+        setP('humLevel', nb.hum ?? 0);
+        setP('progress', progress);
+        setP('frictionLevel', nb.friction ?? 0.004);
+        setP('microRate', nb.microRate ?? 6);
+        setP('popRate', nb.popRate ?? 0.8);
+        setP('burstRate', nb.burstRate ?? 0.12);
+        setP('popAmp', nb.popAmp ?? 0.35);
+        setP('decayMs', nb.decayMs ?? 12);
+        setP('tickLevel', (nb.tick ?? 0) + (wear > 0.45 ? (wear - 0.45) * 0.10 : 0));
+        innerLp.connect(wn);
+        wn.connect(grooveBus);
+        wn.connect(cart, 1);
+        wn.connect(grooveTrim, 2);
+        musicPath.gain.value = 0;
+        beds.forEach((g) => { g.gain.value = 0; g.disconnect(); });
+      } catch { /* 离线 worklet 不可用时保留缓冲噪底与直通音乐 */ }
     }
+    src.start(0, from, dur);
+    return ctx.startRendering();
   }
 
-  /* ── 抬臂：轻微机械声 ─────────────────────────────────── */
+  /* ── 机械声 SFX ── */
   playArmLift() {
     if (!this.ctx || !this.enabled) return;
     const ctx = this.ctx;
@@ -648,16 +943,13 @@ export class VinylAudio {
     const src = ctx.createBufferSource();
     src.buffer = buffer;
     const bp = ctx.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.value = 1800;
-    bp.Q.value = 1.1;
+    bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = 1.1;
     const gain = ctx.createGain();
     gain.gain.value = 0.28;
     src.connect(bp).connect(gain).connect(this.sfxBus);
     src.start(t);
   }
 
-  /* ── 落针 ─────────────────────────────────────────────── */
   playNeedle() {
     if (!this.ctx || !this.enabled) return;
     const ctx = this.ctx;
@@ -666,33 +958,27 @@ export class VinylAudio {
     const dur = 0.9;
     const buffer = ctx.createBuffer(1, Math.floor(rate * dur), rate);
     const data = buffer.getChannelData(0);
-
-    // 低频落地 + 高频点击
     for (let i = 0; i < data.length; i++) {
       const time = i / rate;
       const thump = Math.sin(2 * Math.PI * 46 * time) * Math.exp(-time * 13) * 0.55;
       const click = (Math.random() * 2 - 1) * Math.exp(-time * 55) * 0.3;
       data[i] = thump + click;
     }
-
     const src = ctx.createBufferSource();
     src.buffer = buffer;
     const lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.frequency.value = 1500;
+    lp.type = 'lowpass'; lp.frequency.value = 1500;
     const gain = ctx.createGain();
     gain.gain.value = 0.5;
-    src.connect(lp).connect(gain).connect(this.sfxBus);
+    // 落针是沟槽机械声：走沟槽总线，经回放 EQ 抬低频
+    src.connect(lp).connect(gain).connect(this._grooveBus || this.sfxBus);
     src.start(t);
 
-    // 针尖摩擦：取同一份立体声噪底，不额外生成第三套噪声
     if (this._crackleBuffer) {
       const hiss = ctx.createBufferSource();
       hiss.buffer = this._crackleBuffer;
       const bp = ctx.createBiquadFilter();
-      bp.type = 'bandpass';
-      bp.frequency.value = 2400;
-      bp.Q.value = 0.7;
+      bp.type = 'bandpass'; bp.frequency.value = 2400; bp.Q.value = 0.7;
       const hg = ctx.createGain();
       hg.gain.setValueAtTime(0.0001, t);
       hg.gain.exponentialRampToValueAtTime(0.16, t + 0.02);
@@ -703,7 +989,6 @@ export class VinylAudio {
     }
   }
 
-  /* ── 抽出唱片 ─────────────────────────────────────────── */
   playSleeve() {
     if (!this.ctx || !this.enabled) return;
     const ctx = this.ctx;
@@ -712,7 +997,6 @@ export class VinylAudio {
     const dur = 0.55;
     const buffer = ctx.createBuffer(1, Math.floor(rate * dur), rate);
     const data = buffer.getChannelData(0);
-
     let smooth = 0;
     for (let i = 0; i < data.length; i++) {
       const time = i / rate;
@@ -721,7 +1005,6 @@ export class VinylAudio {
       const env = Math.sin(Math.min(1, time / dur) * Math.PI);
       data[i] = smooth * env * 0.32;
     }
-
     const src = ctx.createBufferSource();
     src.buffer = buffer;
     const bp = ctx.createBiquadFilter();
@@ -735,7 +1018,7 @@ export class VinylAudio {
     src.start(t);
   }
 
-  /* ── iOS 兜底底噪：Web Audio 会被静音拨片整体静音，改走独立 <audio> ── */
+  /* ── iOS 兜底底噪 ── */
   _startIosBed() {
     if (this.iosNoise || !this.enabled) return;
     if (!this._iosNoiseUrl) this._iosNoiseUrl = this._buildIosNoiseUrl();
@@ -753,8 +1036,7 @@ export class VinylAudio {
   }
 
   _iosBedVolume() {
-    const preset = CONDITION_PRESETS[this._condition] || CONDITION_PRESETS.daily;
-    return preset.ios;
+    return this._noiseBase().ios ?? 0.07;
   }
 
   _applyIosBedVolume() {
@@ -801,7 +1083,6 @@ export class VinylAudio {
           Math.round((hiss + rumble + hum) * 32767)));
       }
     }
-    // 稀疏爆豆
     for (let k = 0; k < 80; k++) {
       const pos = Math.floor(rng() * (frames - 1400));
       const amp = (0.04 + rng() * 0.20) * 32767 * (rng() > 0.5 ? 1 : -1);
@@ -813,7 +1094,6 @@ export class VinylAudio {
         pcm[idx] = Math.max(-32767, Math.min(32767, v));
       }
     }
-    // 首尾 0.25 秒交叉淡化
     const fade = Math.floor(rate * 0.25);
     for (let ch = 0; ch < channels; ch++) {
       for (let j = 0; j < fade; j++) {
@@ -833,6 +1113,7 @@ export class VinylAudio {
       workletReady: this._workletReady,
       workletError: this._lastNoiseError,
       condition: this._condition,
+      profile: this._profile?.id ?? null,
       wear: this._wear,
       progress: this.progress,
       rpm: this._rpm,
@@ -851,6 +1132,10 @@ export class VinylAudio {
         hiss: params.get('hissLevel')?.value,
         rumble: params.get('rumbleLevel')?.value,
         hum: params.get('humLevel')?.value,
+        friction: params.get('frictionLevel')?.value,
+        tick: params.get('tickLevel')?.value,
+        microRate: params.get('microRate')?.value,
+        popRate: params.get('popRate')?.value,
         progress: params.get('progress')?.value
       } : null
     };

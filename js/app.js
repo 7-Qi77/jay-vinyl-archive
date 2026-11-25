@@ -1,4 +1,4 @@
-import { ALBUMS, pad2 } from './data.js';
+import { ALBUMS, pad2, normTitle, titleIndexOf } from './data.js';
 import { createTurntable } from './scene.js';
 import { VinylAudio } from './audio.js';
 import { initCovers, getCoverUrls, getStageImage, initTracklists } from './covers.js';
@@ -639,6 +639,71 @@ function getWear(n) {
   return Math.min(1, getWearSeconds(n) / WEAR_FULL_SECONDS);
 }
 
+/* ── 压碟档案：assets/vinyl-profiles.json → 物理链参数 + 提示词 ──
+   每段 prompt 文本即参数叙事；Add 后缀字段为签名曲增量。 */
+let PROFILES = null;
+let wearOffset = 0;
+try { wearOffset = Number(localStorage.getItem('jc-wear-offset')) || 0; } catch { wearOffset = 0; }
+
+function wearFor(n, track, album = ALBUMS[state.index]) {
+  const a = PROFILES?.albums?.[String(n)];
+  const t = trackProfile(n, track, album);
+  const base = a ? a.wear + (t?.wearAdd || 0) : 0.3;
+  return Math.min(1, Math.max(0, base + getWear(n) * 0.5 + wearOffset));
+}
+
+/* 曲目顺序随音源目录（Apple 公开目录 / 本机 meta）变化，索引不可靠 → 以曲名匹配 */
+const trackTitleOf = (album, track) => album?.tracks?.[track] || '';
+function trackProfile(n, track, album = ALBUMS[state.index]) {
+  if (!PROFILES?.tracks) return null;
+  const nt = normTitle(trackTitleOf(album, track));
+  if (!nt) return null;
+  return Object.values(PROFILES.tracks).find((e) => e.n === n && normTitle(e.title) === nt) || null;
+}
+
+function profileFor(n, track, album = ALBUMS[state.index]) {
+  if (!PROFILES) return null;
+  const a = PROFILES.albums?.[String(n)];
+  if (!a) return null;
+  const t = trackProfile(n, track, album);
+  const title = trackTitleOf(album, track);
+  const merge = (base = {}, add = {}) => {
+    const out = { ...base };
+    for (const [k, v] of Object.entries(add)) {
+      if (k.endsWith('Add')) out[k.slice(0, -3)] = (out[k.slice(0, -3)] ?? 0) + v;
+      else out[k] = v;
+    }
+    return out;
+  };
+  return {
+    id: t?.id || a.id,
+    seed: `${n}-${normTitle(title) || track}`,
+    wear: wearFor(n, track, album),
+    condition: state.condition,
+    noise: merge(a.noise, t?.noise),
+    mechanics: merge(a.mechanics, t?.mechanics),
+    cartridge: merge(a.cartridge, t?.cartridge),
+    inner: { ...a.inner },
+    hfLoss: (a.hfLoss || 1) + (t?.hfLossAdd || 0),
+    glare: (a.glare || 0) + (t?.glareAdd || 0),
+    prompt: t?.prompt || a.prompt,
+    albumPrompt: a.prompt,
+    pressing: a.pressing,
+    era: a.era,
+    plays: a.plays,
+    trackTitle: title
+  };
+}
+
+async function loadProfiles() {
+  try {
+    const r = await fetch('assets/vinyl-profiles.json', { cache: 'no-cache' });
+    if (r.ok) PROFILES = await r.json();
+  } catch { PROFILES = null; }
+  syncCondition();
+  return PROFILES;
+}
+
 /* ── 唱片状态：洁净 / 日常 / 磨损 ────────────────────────── */
 const CONDITION_ORDER = ['clean', 'daily', 'worn'];
 const CONDITION_TEXT = { clean: '洁净', daily: '日常', worn: '磨损' };
@@ -648,7 +713,7 @@ function readCondition(n) {
     const saved = localStorage.getItem(`jc-condition-${n}`);
     if (CONDITION_ORDER.includes(saved)) return saved;
   } catch { /* 存储不可用时用默认 */ }
-  return 'daily';
+  return PROFILES?.albums?.[String(n)]?.condition || 'daily';
 }
 
 function saveCondition(n, condition) {
@@ -665,11 +730,14 @@ function updateConditionUI() {
 function syncCondition(album = ALBUMS[state.index], track = lyricsState.track) {
   state.condition = readCondition(album.n);
   updateConditionUI();
-  audio.setRecord({
-    seed: `${album.n}-${track}`,
+  const prof = profileFor(album.n, track, album);
+  if (prof) audio.setProfile(prof);
+  else audio.setRecord({
+    seed: `${album.n}-${normTitle(trackTitleOf(album, track)) || track}`,
     wear: getWear(album.n),
     condition: state.condition
   });
+  emit('jc:profile', { n: album.n, track, trackTitle: trackTitleOf(album, track), profile: prof });
 }
 
 function cycleCondition() {
@@ -704,7 +772,7 @@ function accrueWear() {
         wearFlushAt = nowMs + 3000;
         state.scene.setWear();
         // 磨损随播放缓慢累积，状态噪底同步变密（同 seed 不会重置噪声图案）
-        audio.setRecord({ wear: getWear(n) });
+        audio.setRecord({ wear: wearFor(n, Number(activeAudioKey.split('-')[1])) });
       }
     }
   }
@@ -789,7 +857,7 @@ function updateAudioProgress() {
     } catch { /* 部分平台不支持位置上报 */ }
   }
 
-  if (ok) {
+  if (ok && Number.isFinite(pct)) {
     state.scene?.setProgress(pct / 100);
     // 沟槽声学：唱针越靠内圈，表面噪声越明显
     audio.setNeedleProgress(pct / 100);
@@ -1712,7 +1780,7 @@ async function adoptTracklist(album, entries) {
 
   // 会话内已解析的歌词随索引迁移
   for (let i = 0; i < oldTracks.length; i++) {
-    const j = names.indexOf(oldTracks[i]);
+    const j = titleIndexOf(names, oldTracks[i]);
     if (j < 0 || j === i) continue;
     const from = `${album.n}-${i}`;
     const to = `${album.n}-${j}`;
@@ -1725,7 +1793,7 @@ async function adoptTracklist(album, entries) {
   if (activeAudioKey) {
     const [an, at] = activeAudioKey.split('-').map(Number);
     if (an === album.n) {
-      const j = names.indexOf(oldTracks[at]);
+      const j = titleIndexOf(names, oldTracks[at]);
       if (j >= 0 && j !== at) {
         const entry = audioBank.get(activeAudioKey);
         if (entry) {
@@ -2282,6 +2350,7 @@ const retro = bootRetro({
 retro.setKaraokeChecked(state.karaokeChar);
 // 初值补发：封面/视图状态可能在融合层接线之前就已完成，这里重发一次当前值
 emit('jc:covers', { pct: coversSeen.size / ALBUMS.length });
+loadProfiles();
 
 /* ── iOS：锁屏 / 控制中心 / 后台播放 ───────────────────────── */
 
@@ -2371,6 +2440,18 @@ window.addEventListener('jc-retro:seek', (e) => {
   updateAudioProgress();
   updateTimedLyric();
 });
+
+/* 档案卡磨损滑杆：附加磨损 0–100 → +0–0.5，持久化并即时作用于物理链 */
+window.addEventListener('jc-retro:wear', (e) => {
+  wearOffset = Math.max(0, Math.min(0.5, (Number(e.detail.pct) || 0) / 100 * 0.5));
+  try { localStorage.setItem('jc-wear-offset', String(wearOffset)); } catch { /* ignore */ }
+  syncCondition();
+});
+
+/* 本机调试钩子：仅 localhost 暴露，供物理自检与 A/B 渲染脚本使用 */
+if (location.hostname === '127.0.0.1' || location.hostname === 'localhost') {
+  window.__jc = { audio, state, profileFor, loadProfiles, ALBUMS };
+}
 
 /* PWA：只在 HTTPS / localhost 注册，避免旧浏览器或 file:// 报错 */
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {

@@ -256,3 +256,14 @@ export const ALBUMS = [
 ];
 
 export const pad2 = (n) => String(n).padStart(2, '0');
+
+/* 曲名归一化：Apple 公开目录的繁简 / 空格 / feat 差异不应影响本机资源对位 */
+const TITLE_FIX = { '涙': '泪', '晩': '晚', '妳': '你', '著': '着', '喆': '哲' };
+export const normTitle = (s = '') => String(s)
+  .replace(/[\s·.・()（）\-—_]/g, '')
+  .replace(/feat\.?/gi, '')
+  .replace(/[涙晩妳著喆]/g, (c) => TITLE_FIX[c] || c);
+export const titleIndexOf = (names, title) => {
+  const nt = normTitle(title);
+  return names.findIndex((x) => normTitle(x) === nt);
+};

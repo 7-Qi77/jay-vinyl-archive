@@ -44,19 +44,53 @@ python -m http.server 8080
 - 手动导入 LRC / TXT 永远优先，可点“移除”恢复自动匹配。
 - 《手写的从前》内置纯文本歌词（lrclib 暂无该曲同步歌词）。
 
-## 黑胶音频引擎
+## 黑胶音频引擎（四层物理建模）
 
-- 表面噪声分 `hiss / crackle / pops / rumble / hum`，优先在 `AudioWorklet` 音频线程生成，回退到预生成立体声缓冲；不再用 7 秒 mono 循环冒充全部底噪。
-- 爆豆由唱片 seed 生成固定的沟槽缺陷图：同曲重播落在相同进度，内圈更密，并带引入槽 / 导出槽标记；不再逐样本随机触发。
-- 播放链：32Hz 高通 → RIAA 近似倾斜 → 内圈低通 → 轻饱和 → wow/flutter 延迟 → 软限幅；wow 与唱盘转速锁定，叠加二次旋转纹波与慢速漂移，不使用实时 `playbackRate` 变速，也没有卷积混响。
-- iPhone 上 Safari 16.4+ / iOS 17+ 通过 `navigator.audioSession.type = 'playback'` 让 Web Audio 穿过静音拨片，从而保留完整黑胶链路；旧 Safari 自动退回 `<audio>` 直出 + 独立底噪。
-- 唱片状态分「洁净 / 日常 / 磨损」，按专辑保存在本机；播放累计磨损会同步增加表面噪声。
-- 设计参考：`Riyoway/vinyl-simulator`（源码 MIT，3D 模型与视觉资产不在 MIT 范围）的状态/RIAA 思路；`gemify-tools/vinyl-scratch`（GPL-3.0-only）的噪声分层与参数思路，未复制其代码。
+实时 Web Audio / AudioWorklet 链，30s 试听与本机完整版走**同一条链**，零新增音频文件：
+
+1. **精确 RIAA 往返**：3180µs / 318µs / 75µs 三时间常数 + 21kHz 补充极点，双线性一阶节级联；
+   刻纹预加重（rec）→ 沟槽域 → 回放去加重（play）严格互逆（自检残差 6.6e-8）。
+   沟槽域统一 trim 0.05 / 回放 makeup ×20：预加重峰值约 ×14，不衰减会让追踪失真 waveshaper 硬夹。
+2. **角度域机械**：偏心 warp（每转一次音高 + 幅度调制）、电机换向纹波（每转 8 极）、轴承 20–60Hz 慢 AM、
+   wow / flutter / 慢漂移全部只调制 DelayNode 与增益，不改 `playbackRate`；worn 唱片出现与转速锁定的每转 tick。
+3. **唱头 / 针尖接触**：MM 唱头谐振峰（档案 8.8–10.8kHz 可调）、针尖摩擦噪声随节目电平调制、
+   内圈追踪失真（高频饱和随半径收紧）替代静态低通。
+4. **表面噪声事件化**：worklet 内泊松调度 micro-crackle / pop / burst（速率、幅度范围、衰减全可调，
+   参数分类借鉴 vinyl-scratch 的滑杆 taxonomy，独立实现），种子确定、随唱针内移变脏。
+
+worklet 输出**三条总线**，对应真实拾取顺序：总线 0 纯音乐汇沟槽总线；总线 2 沟槽域噪声
+（嘶声 / 隆隆 / 摩擦 / 嗡声）经统一 trim 汇流后才过 RIAA 去加重（嘶声被滚降、隆隆被抬升）；
+总线 1 机械冲击（微爆 / 爆豆 / 划痕 / tick）属唱针接触域，绕过 RIAA、只经唱头谐振与磨损滚降，保留点击瞬态。
+老浏览器无 `createIIRFilter` / Worklet 时回退两段 shelf 近似 + 预生成缓冲噪底；iPhone 旧 Safari 退回 `<audio>` 直出 + 独立底噪。
+
+唱片状态分「洁净 / 日常 / 磨损」按专辑保存；播放累计磨损与档案卡「附加磨损」滑杆同步作用于物理链。
+
+### 压碟档案（周杰伦逐曲黑胶音质提示词）
+
+`assets/vinyl-profiles.json`：16 张专辑各一段「压碟档案」提示词 + 12 首签名曲增量档
+（晴天 / 东风破 / 七里香 / 夜曲 / 青花瓷 / 稻香 / 简单爱 / 安静 / 手写的从前 / 告白气球 / 最伟大的作品 / 我落泪情绪零碎）。
+每段 prompt 文本即参数叙事：年代决定基础磨损与噪声密度，签名曲叠加增量（如《晴天》微爆 +3/s、偏心 +0.02%）。
+曲目以**曲名归一化**匹配（`normTitle`：繁简 / 空格 / feat 差异），不依赖曲目索引——Apple 目录顺序与本机 meta 顺序不同。
+内页左栏顶部「PRESSING DOSSIER · 压碟档案」卡展示当前曲提示词、压碟版本、播放次数与磨损，附附加磨损滑杆（长号）。
+
+### 物理自检与 A/B
+
+- `tools/verify-vinyl.js`：页内注入后 `await __verifyVinyl(__jc.audio)`，六项确定性自检
+  （RIAA 往返恒等 / 回放倾斜 / wow 边带 / 事件密度 worn>clean / 同 seed 事件图一致 / 内圈高频衰减）。
+  实测：往返残差 6.6e-8；回放倾斜 +14.9dB@40–80Hz、-9.7dB@6–10kHz；worn 192 事件/10s vs clean 18；
+  同 seed 事件位置逐一对位；内圈 10–14kHz 衰减 -4.2dB。另附 `__wavEncode` 供 A/B 下载。
+- `tools/analyze-ab.py`：纯标准库分带 FFT 对照 `ab/woluolei-dry.wav` 与 `ab/woluolei-vinyl.wav`
+  （《我落泪情绪零碎》本机完整版 60s 起 12s，同一条链离线渲染）。实测电平差 <0.1dB，
+  20–60Hz +0.37dB（隆隆）、6–12kHz +1.16dB（唱头峰）、12–20kHz -2.31dB（磨损 / 内圈滚降）。
+- 设计参考：`Riyoway/vinyl-simulator`（源码 MIT，3D 模型与视觉资产不在 MIT 范围）的 RIAA 往返 / 机械 / 接触建模思路；
+  `gemify-tools/vinyl-scratch`（GPL-3.0-only）仅借参数分类，未复制其代码。
 
 ## 工具脚本
 
 - `tools/build-meta.py`：重新抓取 iTunes 曲目元数据（试听 URL / 时长）并匹配 lrclib 歌词 ID，生成 `assets/track-meta.json`。只存 URL 与 ID。
 - `tools/scan-audio.py`：扫描 `assets/audio/` 与 `assets/lyrics/`，生成 `manifest.json` 与歌词索引。
+- `tools/verify-vinyl.js`：黑胶物理链六项确定性自检（页内运行）。
+- `tools/analyze-ab.py`：A/B WAV 分带能量与峰值因子对照（纯标准库）。
 
 ## 键盘
 
