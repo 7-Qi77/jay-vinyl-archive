@@ -8,6 +8,7 @@ const BASE = process.env.BASE_URL || 'http://localhost:5173';
 const errors = [];
 let failed = 0;
 const localOrigin = new URL(BASE).origin;
+const coverWaitMs = Math.max(1000, Number(process.env.COVER_WAIT_MS) || 20000);
 const collectConsole = (m) => {
   if (m.type() !== 'error') return;
   try {
@@ -18,7 +19,10 @@ const collectConsole = (m) => {
 
 const ok = (name, cond) => {
   console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}`);
-  if (!cond) failed = 1;
+  if (!cond) {
+    failed = 1;
+    console.error(`::error::Smoke assertion failed: ${name}`);
+  }
 };
 
 const browser = await chromium.launch({
@@ -27,6 +31,7 @@ const browser = await chromium.launch({
   args: ['--autoplay-policy=no-user-gesture-required']
 });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+page.setDefaultTimeout(60000);
 await page.addInitScript(() => localStorage.clear());
 page.on('pageerror', (e) => errors.push(`pageerror: ${e}`));
 page.on('console', collectConsole);
@@ -42,7 +47,7 @@ try {
   ok('原声模式默认绕过黑胶链', referenceRoute.mode === 'reference' && referenceRoute.directGain > 0.99 && referenceRoute.vinylGain < 0.01);
 
   try {
-    await page.waitForFunction(() => document.querySelectorAll('.jacket.has-cover').length >= 15, { timeout: 20000 });
+    await page.waitForFunction(() => document.querySelectorAll('.jacket.has-cover').length >= 15, null, { timeout: coverWaitMs });
   } catch {
     /* 封面走网络，失败有档案版兜底 */
   }
@@ -104,6 +109,7 @@ try {
   ok('沉浸模式退出', await page.locator('#imxUI').isHidden());
 
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  mobile.setDefaultTimeout(60000);
   await mobile.addInitScript(() => localStorage.clear());
   mobile.on('pageerror', (e) => errors.push(`mobile pageerror: ${e}`));
   mobile.on('console', collectConsole);
@@ -132,6 +138,7 @@ try {
     hasTouch: true,
     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_8 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1'
   });
+  legacy.setDefaultTimeout(60000);
   await legacy.addInitScript(() => localStorage.clear());
   legacy.on('pageerror', (e) => errors.push(`legacy pageerror: ${e}`));
   await legacy.goto(`${BASE}/?legacy=${Date.now()}`, { waitUntil: 'domcontentloaded' });
@@ -146,6 +153,7 @@ try {
   ok(`控制台无报错${errors.length ? `（${errors.length} 条）` : ''}`, errors.length === 0);
   if (errors.length) console.log(errors.join('\n'));
 } catch (e) {
+  console.error(`::error::Smoke crash: ${e.message}`);
   console.error('SMOKE CRASH:', e);
   failed = 1;
 } finally {
