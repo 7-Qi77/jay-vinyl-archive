@@ -48,6 +48,23 @@ async function auditViewport(page, label) {
   return metrics;
 }
 
+async function checkFooterClearance(page, label) {
+  await page.evaluate(() => {
+    const view = document.querySelector('#viewCrate');
+    view.scrollTop = view.scrollHeight;
+  });
+  await page.waitForTimeout(350);
+  const overlap = await page.evaluate(() => {
+    const footer = document.querySelector('.crate-footer').getBoundingClientRect();
+    return [...document.querySelectorAll('.crate-item')].filter((el) => {
+      const r = el.getBoundingClientRect();
+      return r.bottom > footer.top + 1 && r.top < footer.bottom - 1;
+    }).length;
+  });
+  check(`${label} 底部声明不遮挡专辑封面`, overlap === 0, `overlap=${overlap}`);
+  await page.evaluate(() => { document.querySelector('#viewCrate').scrollTop = 0; });
+}
+
 try {
   for (const profile of profiles) {
     const descriptor = devices[profile.device];
@@ -63,6 +80,7 @@ try {
     await page.waitForTimeout(1500);
     check(`${profile.name} 唱片柜可见`, await page.locator('#viewCrate').isVisible());
     await auditViewport(page, `${profile.name} 唱片柜`);
+    await checkFooterClearance(page, profile.name);
 
     await page.locator('.crate-item').nth(2).click();
     await page.waitForTimeout(3400);

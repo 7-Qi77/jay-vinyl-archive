@@ -2612,6 +2612,7 @@ body.immersive .topbar * { opacity: 0; pointer-events: none !important; }
   .crate-main {
     position: relative;
     inset: auto;
+    flex: 0 0 auto;
     margin: 0;
     display: block;
     padding: 96px clamp(18px, 5vw, 40px) 80px;
@@ -2625,7 +2626,7 @@ body.immersive .topbar * { opacity: 0; pointer-events: none !important; }
   .cabinet-wrap { max-width: none; }
   .cabinet { padding: 14px 14px 12px; }
   .rack { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-  .crate-footer { position: relative; left: auto; right: auto; bottom: auto; margin-top: 30px; flex-direction: column; gap: 6px; }
+  .crate-footer { position: relative; flex: 0 0 auto; left: auto; right: auto; bottom: auto; margin-top: 30px; flex-direction: column; gap: 6px; }
 
   /* 舞台改为纵向叙事 */
   .view--stage { overflow-y: auto; }
