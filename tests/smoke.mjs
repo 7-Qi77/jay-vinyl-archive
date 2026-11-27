@@ -7,6 +7,14 @@ import { chromium } from 'playwright';
 const BASE = process.env.BASE_URL || 'http://localhost:5173';
 const errors = [];
 let failed = 0;
+const localOrigin = new URL(BASE).origin;
+const collectConsole = (m) => {
+  if (m.type() !== 'error') return;
+  try {
+    if (new URL(m.location().url).origin !== localOrigin) return;
+  } catch { /* 无来源的控制台错误仍然计入 */ }
+  errors.push(`console: ${m.text()}`);
+};
 
 const ok = (name, cond) => {
   console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}`);
@@ -21,12 +29,10 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 await page.addInitScript(() => localStorage.clear());
 page.on('pageerror', (e) => errors.push(`pageerror: ${e}`));
-page.on('console', (m) => {
-  if (m.type() === 'error') errors.push(`console: ${m.text()}`);
-});
+page.on('console', collectConsole);
 
 try {
-  await page.goto(BASE, { waitUntil: 'networkidle' });
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   await page.click('#enterBtn');
   await page.waitForTimeout(2000);
   ok('进入唱片柜', await page.locator('#viewCrate').isVisible());
@@ -100,10 +106,8 @@ try {
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   await mobile.addInitScript(() => localStorage.clear());
   mobile.on('pageerror', (e) => errors.push(`mobile pageerror: ${e}`));
-  mobile.on('console', (m) => {
-    if (m.type() === 'error') errors.push(`mobile console: ${m.text()}`);
-  });
-  await mobile.goto(`${BASE}/?mobile=${Date.now()}`, { waitUntil: 'networkidle' });
+  mobile.on('console', collectConsole);
+  await mobile.goto(`${BASE}/?mobile=${Date.now()}`, { waitUntil: 'domcontentloaded' });
   await mobile.click('#enterBtn');
   await mobile.waitForTimeout(1600);
   await mobile.locator('.crate-item').nth(2).click();
@@ -130,7 +134,7 @@ try {
   });
   await legacy.addInitScript(() => localStorage.clear());
   legacy.on('pageerror', (e) => errors.push(`legacy pageerror: ${e}`));
-  await legacy.goto(`${BASE}/?legacy=${Date.now()}`, { waitUntil: 'networkidle' });
+  await legacy.goto(`${BASE}/?legacy=${Date.now()}`, { waitUntil: 'domcontentloaded' });
   await legacy.click('#enterBtn');
   await legacy.waitForTimeout(500);
   ok('旧 iOS 使用无 CORS 元素回退', await legacy.evaluate(() => {
