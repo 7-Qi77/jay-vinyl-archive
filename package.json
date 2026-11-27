@@ -7,6 +7,7 @@
     "test:smoke": "node tests/smoke.mjs",
     "test:a11y": "node tests/a11y.mjs",
     "test:perf": "node tests/performance.mjs",
+    "test:ios": "node tests/ios.mjs",
     "lint": "eslint js tests",
     "format": "prettier --write \"js/**/*.js\" \"tests/*.mjs\" \"index.html\" \"styles.css\"",
     "build:web": "node scripts/build-ios-web.mjs",
