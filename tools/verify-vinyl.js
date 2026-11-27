@@ -8,6 +8,7 @@
  *  4 crackleDensity：worn 表面事件密度 > clean > 0（泊松 taxonomy 生效）
  *  5 determinism：同 seed 两次离线渲染逐样本一致
  *  6 innerGroove：唱针内移 → 10–14kHz 能量下降（内圈追踪衰减）
+ *  7 truePeak：48k / 45rpm 满幅突发经同一链后不超过 -1dBFS
  * 另附 __wavEncode(buffer) 供 A/B 渲染下载。
  */
 (function () {
@@ -191,6 +192,25 @@
       const ea = band(a, FS, 10000, 14000, 1000), eb = band(b, FS, 10000, 14000, 1000);
       out.innerGroove = { outerDb: db(ea), innerDb: db(eb), dropDb: db(eb / ea) };
       out.innerGroove.pass = eb < ea * 0.8;
+    }
+
+    // 7 真峰值与离线采样率：48k 满幅突发经同一链后不超过 -1dBFS
+    {
+      const rate = 48000;
+      const ctx = new OfflineAudioContext(1, 1, rate);
+      const source = ctx.createBuffer(2, rate, rate);
+      for (let ch = 0; ch < 2; ch++) {
+        const data = source.getChannelData(ch);
+        for (let i = 0; i < data.length; i++) data[i] = i >= rate / 4 && i < rate / 4 + 96 ? 2 : 0;
+      }
+      const prof = { seed: 'verify-peak', wear: 0, noise: {}, mechanics: {}, cartridge: { gain: 0 }, hfLoss: 0, inner: { outer: 20000, inner: 20000 }, glare: 0 };
+      const rendered = await audio.renderOffline(source, { profile: prof, noise: false, seconds: 1, rpm: 45, sampleRate: rate });
+      let peak = 0;
+      for (let ch = 0; ch < rendered.numberOfChannels; ch++) {
+        for (const value of rendered.getChannelData(ch)) peak = Math.max(peak, Math.abs(value));
+      }
+      out.truePeak = { sampleRate: rendered.sampleRate, peak, peakDb: 20 * Math.log10(Math.max(1e-12, peak)), ceiling: 0.891250938 };
+      out.truePeak.pass = rendered.sampleRate === rate && peak > 0.01 && peak <= 0.892;
     }
 
     out.allPass = Object.values(out).every((v) => v && v.pass !== false);

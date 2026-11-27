@@ -8,11 +8,6 @@ const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
 const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const easeOutQuint = (t) => 1 - Math.pow(1 - t, 5);
-const easeOutSoftBack = (t) => {
-  const c = 1.02;
-  const c3 = c + 1;
-  return 1 + c3 * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2);
-};
 
 function canvas2d(w, h) {
   const c = document.createElement('canvas');
@@ -156,9 +151,11 @@ function mulberry32(seed) {
   };
 }
 
-function makeWearTexture(seed, wear) {
+function makeWearTexture(seed, wear, mobile = false) {
   const S = 1024;
-  const { c, g } = canvas2d(S, S);
+  const resolution = mobile ? 512 : S;
+  const { c, g } = canvas2d(resolution, resolution);
+  g.scale(resolution / S, resolution / S);
   const rnd = mulberry32(seed * 2654435761 + 7);
   const cx = S / 2;
   const cy = S / 2;
@@ -363,9 +360,11 @@ function makeEnvTexture(renderer) {
   return env;
 }
 
-function makeGrooveBump(trackCount = 4) {
+function makeGrooveBump(trackCount = 4, mobile = false) {
   const S = 1024;
-  const { c, g } = canvas2d(S, S);
+  const resolution = mobile ? 512 : S;
+  const { c, g } = canvas2d(resolution, resolution);
+  g.scale(resolution / S, resolution / S);
   g.fillStyle = '#000';
   g.fillRect(0, 0, S, S);
   const cx = S / 2;
@@ -421,9 +420,11 @@ function fitFont(g, text, maxWidth, size, family, weight, min = 12) {
   return Math.round(s);
 }
 
-function makeLabelTexture(album, coverImage = null) {
+function makeLabelTexture(album, coverImage = null, mobile = false) {
   const S = 1024;
-  const { c, g } = canvas2d(S, S);
+  const resolution = mobile ? 512 : S;
+  const { c, g } = canvas2d(resolution, resolution);
+  g.scale(resolution / S, resolution / S);
   const cx = S / 2;
   const cy = S / 2;
   const pal = album.palette;
@@ -712,15 +713,9 @@ export function createTurntable(canvas, options = {}) {
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
   const isMobile = coarsePointer || Math.min(window.innerWidth, window.innerHeight) < 720;
-  const maxDpr = isMobile ? 1.5 : 2;
+  const maxDpr = isMobile ? 1.25 : 2;
   const onNeedleDrop = options.onNeedleDrop || (() => {});
   const getCoverImage = typeof options.getCoverImage === 'function' ? options.getCoverImage : null;
-  const getAudioProgress =
-    typeof options.getAudioProgress === 'function'
-      ? options.getAudioProgress
-      : () => ({ cued: false, playing: false, progress: 0 });
-  const canSeek = typeof options.canSeek === 'function' ? options.canSeek : () => false;
-  const onSeek = typeof options.onSeek === 'function' ? options.onSeek : () => {};
   const canSeekDisc = typeof options.canSeekDisc === 'function' ? options.canSeekDisc : () => false;
   const onDiscSeek = typeof options.onDiscSeek === 'function' ? options.onDiscSeek : () => {};
   const onDiscSeekEnd = typeof options.onDiscSeekEnd === 'function' ? options.onDiscSeekEnd : () => {};
@@ -736,6 +731,11 @@ export function createTurntable(canvas, options = {}) {
 
   let dprCap = Math.min(window.devicePixelRatio || 1, maxDpr);
   let lastShadowUpdate = -1e9;
+  let lastShadowArm = Infinity;
+  let lastShadowDiscY = Infinity;
+  let lastShadowDiscX = Infinity;
+  let lastShadowDiscZ = Infinity;
+  let lastShadowOpacity = Infinity;
 
   const renderer = new THREE.WebGLRenderer({
     canvas,
@@ -920,12 +920,12 @@ export function createTurntable(canvas, options = {}) {
   const woodMat = new THREE.MeshPhysicalMaterial({
     map: woodTex,
     bumpMap: woodTex,
-    bumpScale: 0.012,
+    bumpScale: isMobile ? 0.008 : 0.012,
     roughness: 0.44,
     metalness: 0.04,
-    clearcoat: 0.3,
+    clearcoat: isMobile ? 0 : 0.3,
     clearcoatRoughness: 0.4,
-    sheen: 0.12,
+    sheen: isMobile ? 0 : 0.12,
     sheenColor: new THREE.Color(0x6f4426),
     envMapIntensity: 0.62
   });
@@ -947,9 +947,9 @@ export function createTurntable(canvas, options = {}) {
     color: 0xc7a56b,
     metalness: 1,
     roughness: 0.22,
-    anisotropy: 0.38,
+    anisotropy: isMobile ? 0 : 0.38,
     anisotropyRotation: Math.PI / 2,
-    clearcoat: 0.16,
+    clearcoat: isMobile ? 0 : 0.16,
     clearcoatRoughness: 0.24,
     envMapIntensity: 1.25
   });
@@ -957,8 +957,8 @@ export function createTurntable(canvas, options = {}) {
     color: 0x1a1917,
     metalness: 0.82,
     roughness: 0.3,
-    anisotropy: 0.22,
-    clearcoat: 0.12,
+    anisotropy: isMobile ? 0 : 0.22,
+    clearcoat: isMobile ? 0 : 0.12,
     envMapIntensity: 0.86
   });
 
@@ -1032,12 +1032,14 @@ export function createTurntable(canvas, options = {}) {
   root.add(platterGroup);
 
   // 唱片
-  let grooveBump = makeGrooveBump(4);
+  let grooveBump = makeGrooveBump(4, isMobile);
+  const grooveCache = new Map([[4, grooveBump]]);
+  const labelCache = new Map();
   const discSideMat = new THREE.MeshPhysicalMaterial({
     color: 0x090909,
     roughness: 0.3,
     metalness: 0.12,
-    clearcoat: 0.7,
+    clearcoat: isMobile ? 0.35 : 0.7,
     clearcoatRoughness: 0.25,
     envMapIntensity: 0.6,
     transparent: true,
@@ -1047,9 +1049,9 @@ export function createTurntable(canvas, options = {}) {
     color: 0xffffff,
     roughness: 0.24,
     metalness: 0.05,
-    clearcoat: 1,
+    clearcoat: isMobile ? 0.45 : 1,
     clearcoatRoughness: 0.085,
-    anisotropy: 0.72,
+    anisotropy: isMobile ? 0 : 0.72,
     anisotropyRotation: Math.PI / 2,
     specularIntensity: 0.62,
     bumpMap: grooveBump,
@@ -1087,7 +1089,7 @@ export function createTurntable(canvas, options = {}) {
     color: 0x0a0a0a,
     roughness: 0.22,
     metalness: 0.15,
-    clearcoat: 1,
+    clearcoat: isMobile ? 0.4 : 1,
     clearcoatRoughness: 0.12,
     envMapIntensity: 0.8,
     transparent: true,
@@ -1460,7 +1462,7 @@ export function createTurntable(canvas, options = {}) {
   }
 
   // 悬浮微尘
-  const DUST = 240;
+  const DUST = isMobile ? 96 : 240;
   const positions = new Float32Array(DUST * 3);
   const speeds = new Float32Array(DUST);
   for (let i = 0; i < DUST; i++) {
@@ -1527,6 +1529,8 @@ export function createTurntable(canvas, options = {}) {
   let last = performance.now();
   let currentAlbum = null;
   let discTex = null;
+  let discTextureKey = '';
+  let shadersWarmed = false;
   let firstShown = false;
   let seeking = false;
   let discPress = null;
@@ -1540,8 +1544,6 @@ export function createTurntable(canvas, options = {}) {
   let cueDragging = false;
   let cueFlying = false;
   let cueProgress = 0;
-  let cueRadius = 2.12;
-  let cueInside = true;
   let cuePointerId = null;
   let cueStartNeedle = false;
   let cueEngaged = false;
@@ -1591,7 +1593,7 @@ export function createTurntable(canvas, options = {}) {
       wearTex.dispose();
       wearTex = null;
     }
-    wearTex = makeWearTexture(currentAlbum.n, wear);
+    wearTex = makeWearTexture(currentAlbum.n, wear, isMobile);
     wearMat.map = wearTex;
     /* 层不透明度只做温和增益：高磨损靠纹理自身密度与笔触透明度表达，
        过高的层不透明度会让浅色元素把黑胶洗灰、划痕糊掉 */
@@ -1611,17 +1613,39 @@ export function createTurntable(canvas, options = {}) {
   function installDiscTexture(album) {
     const cover = getCoverImage ? getCoverImage(album) : null;
     const usable = cover && cover.complete && cover.naturalWidth > 0;
+    const trackCount = album.tracks?.length || 4;
+    const textureKey = `${album.n}:${usable ? cover.currentSrc || cover.src : 'archive'}:${trackCount}`;
+    if (textureKey === discTextureKey) return;
 
-    if (discTex) discTex.dispose();
-    discTex = makeLabelTexture(album, usable ? cover : null);
-    discTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+    let label = labelCache.get(textureKey);
+    if (!label) {
+      label = makeLabelTexture(album, usable ? cover : null, isMobile);
+      label.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+      labelCache.set(textureKey, label);
+      if (labelCache.size > 20) {
+        const [oldKey, oldLabel] = labelCache.entries().next().value;
+        labelCache.delete(oldKey);
+        if (oldLabel !== discTex) oldLabel.dispose();
+      }
+    }
+    if (discTex && discTex !== label && ![...labelCache.values()].includes(discTex)) discTex.dispose();
+    discTex = label;
+    discTextureKey = textureKey;
     discTopMat.map = discTex;
     discTopMat.needsUpdate = true;
 
-    // 按曲目数重刻沟槽与分轨
-    const trackCount = album.tracks?.length || 4;
-    grooveBump.dispose();
-    grooveBump = makeGrooveBump(trackCount);
+    let bump = grooveCache.get(trackCount);
+    if (!bump) {
+      bump = makeGrooveBump(trackCount, isMobile);
+      grooveCache.set(trackCount, bump);
+      if (grooveCache.size > 20) {
+        const [oldCount, oldBump] = grooveCache.entries().next().value;
+        grooveCache.delete(oldCount);
+        if (oldBump !== grooveBump) oldBump.dispose();
+      }
+    }
+    if (grooveBump !== bump && ![...grooveCache.values()].includes(grooveBump)) grooveBump.dispose();
+    grooveBump = bump;
     discTopMat.bumpMap = grooveBump;
     discTopMat.needsUpdate = true;
     const bands = grooveBandRadii(trackCount).map((r) => r / 0.5);
@@ -1642,6 +1666,13 @@ export function createTurntable(canvas, options = {}) {
     }
 
     refreshWear();
+    if (!shadersWarmed && !isMobile && renderer.compileAsync) {
+      shadersWarmed = true;
+      Promise.all([
+        renderer.compileAsync(scene, camera),
+        renderer.compileAsync(postScene, postCam)
+      ]).catch(() => {});
+    }
   }
 
   function refreshCover(album) {
@@ -1923,11 +1954,12 @@ export function createTurntable(canvas, options = {}) {
   const ro = new ResizeObserver(resize);
   ro.observe(canvas);
 
-  window.addEventListener('pointermove', (e) => {
+  const onWindowPointerMove = (e) => {
     pointerX = (e.clientX / window.innerWidth) * 2 - 1;
     pointerY = (e.clientY / window.innerHeight) * 2 - 1;
     pointerAt = performance.now();
-  }, { passive: true });
+  };
+  window.addEventListener('pointermove', onWindowPointerMove, { passive: true });
 
   // ── 拖动唱片跳转：径向位置 ↔ 播放进度 ──────────────────
   const ray = new THREE.Raycaster();
@@ -1994,8 +2026,6 @@ export function createTurntable(canvas, options = {}) {
 
   function applyCue(c) {
     cueProgress = c.p;
-    cueRadius = c.r;
-    cueInside = c.inside;
     if (c.inside) cueEngaged = true;
     armGroup.rotation.y = angleForProgress(c.p);
     cueRing.visible = true;
@@ -2041,12 +2071,11 @@ export function createTurntable(canvas, options = {}) {
   }
 
   /* 点击盘面：唱臂抬起飞到目标沟槽，再缓缓落针 */
-  function cueToProgress(p, e) {
+  function cueToProgress(p) {
     if (reduced || cueDragging || cueFlying || !canCue()) return false;
     cueFlying = true;
     cueStartNeedle = needleDown;
     cueProgress = p;
-    cueInside = true;
     cueEngaged = true;
     cueMoved = true;
     clearGroup('arm');
@@ -2201,7 +2230,7 @@ export function createTurntable(canvas, options = {}) {
       seeking = false;
       onDiscSeekEnd();
     } else if (canCue() && !reduced) {
-      cueToProgress(press.p, e);
+      cueToProgress(press.p);
     } else {
       onDiscSeek(press.p);
       onDiscSeekEnd();
@@ -2374,10 +2403,21 @@ export function createTurntable(canvas, options = {}) {
       highCount = 0;
     }
 
-    // 阴影按需刷新：机台/唱臂在动时约 12Hz，避免每帧重画两张 1024 阴影图
-    if (now - lastShadowUpdate > 83) {
+    // 阴影只在机台几何变化时刷新；镜头、转盘对称旋转与微尘不重算阴影。
+    const shadowChanged =
+      Math.abs(armGroup.rotation.y - lastShadowArm) > 0.002 ||
+      Math.abs(recordGroup.position.y - lastShadowDiscY) > 0.002 ||
+      Math.abs(recordGroup.position.x - lastShadowDiscX) > 0.002 ||
+      Math.abs(recordGroup.position.z - lastShadowDiscZ) > 0.002 ||
+      Math.abs(discOpacity - lastShadowOpacity) > 0.02;
+    if (shadowChanged && now - lastShadowUpdate > 83) {
       renderer.shadowMap.needsUpdate = true;
       lastShadowUpdate = now;
+      lastShadowArm = armGroup.rotation.y;
+      lastShadowDiscY = recordGroup.position.y;
+      lastShadowDiscX = recordGroup.position.x;
+      lastShadowDiscZ = recordGroup.position.z;
+      lastShadowOpacity = discOpacity;
     }
 
     renderer.setRenderTarget(rt);
@@ -2448,7 +2488,12 @@ export function createTurntable(canvas, options = {}) {
     dispose() {
       cancelAnimationFrame(raf);
       ro.disconnect();
+      window.removeEventListener('pointermove', onWindowPointerMove);
       if (rt) rt.dispose();
+      scene.environment?.dispose();
+      labelCache.forEach((texture) => texture.dispose());
+      grooveCache.forEach((texture) => texture.dispose());
+      wearTex?.dispose();
       scene.traverse((obj) => {
         if (obj.geometry) obj.geometry.dispose();
         const m = obj.material;

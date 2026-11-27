@@ -125,12 +125,15 @@ class VinylNoiseProcessor extends AudioWorkletProcessor {
 
   _triggerEvent(event) {
     const amount = event.amp * event.sign;
-    const channels = event.both ? [0, 1] : [event.ch];
-    for (const ch of channels) {
-      const value = amount * (ch === event.ch ? 1 : 0.9);
-      if (event.kind === 0) { if (ch === 0) this.crackleL += value; else this.crackleR += value; }
-      else if (event.kind === 1) { if (ch === 0) this.popL += value; else this.popR += value; }
-      else { if (ch === 0) this.scratchL += value; else this.scratchR += value; }
+    if (event.kind === 0) {
+      if (event.ch === 0 || event.both) this.crackleL += amount;
+      if (event.ch === 1 || event.both) this.crackleR += amount * (event.ch === 1 ? 1 : 0.9);
+    } else if (event.kind === 1) {
+      if (event.ch === 0 || event.both) this.popL += amount;
+      if (event.ch === 1 || event.both) this.popR += amount * (event.ch === 1 ? 1 : 0.9);
+    } else {
+      if (event.ch === 0 || event.both) this.scratchL += amount;
+      if (event.ch === 1 || event.both) this.scratchR += amount * (event.ch === 1 ? 1 : 0.9);
     }
   }
 
@@ -283,12 +286,12 @@ class VinylNoiseProcessor extends AudioWorkletProcessor {
       const grooveL = this.hissL * hissLevel + this.fricL * fric + lowL + hum * humLevel;
       const grooveR = this.hissR * hissLevel + this.fricR * fric + lowR + hum * humLevel;
 
-      left[i] = Math.max(-0.95, Math.min(0.95, ml));
-      right[i] = Math.max(-0.95, Math.min(0.95, mr));
-      if (impL) impL[i] = Math.max(-0.95, Math.min(0.95, surfL + tickL));
-      if (impR) impR[i] = Math.max(-0.95, Math.min(0.95, surfR + tickR));
-      if (gL) gL[i] = Math.max(-0.95, Math.min(0.95, grooveL));
-      if (gR) gR[i] = Math.max(-0.95, Math.min(0.95, grooveR));
+      left[i] = ml;
+      right[i] = mr;
+      if (impL) impL[i] = surfL + tickL;
+      if (impR) impR[i] = surfR + tickR;
+      if (gL) gL[i] = grooveL;
+      if (gR) gR[i] = grooveR;
     }
     return true;
   }

@@ -118,6 +118,11 @@ export class VinylAudio {
     this._innerOuter = 16000;
     this._innerInner = 11000;
     this._hfLoss = 1.2;
+    this._limiterReady = false;
+    this._limiterStarted = false;
+    this._limiterError = null;
+    this._playbackOutput = null;
+    this._tracingDrive = NaN;
     this._lastNoiseError = null;
   }
 
@@ -140,6 +145,10 @@ export class VinylAudio {
     if (this._iosWebAudio) {
       const claimed = this.claimPlaybackSession();
       if (!claimed) this.iosFallback = true;
+    }
+    if (this.iosFallback) {
+      this._startIosBed();
+      return;
     }
     if (this.ctx) {
       this.claimPlaybackSession();
@@ -189,6 +198,7 @@ export class VinylAudio {
     this._makeup.gain.value = 20;
     this._warpAmp.connect(this._makeup);
     this._buildPlaybackEq(this.ctx, this._makeup, this.limiter);
+    this._playbackOutput = this.musicGain;
 
     this.noiseBus = this.ctx.createGain();
     this.noiseBus.gain.value = 1;
@@ -205,9 +215,37 @@ export class VinylAudio {
     this._applyNoiseLevels();
 
     if (this.iosFallback) this._startIosBed();
-    else this._startWorkletNoise();
+    else {
+      this._startWorkletNoise();
+      this._startLimiter();
+    }
 
     if (this.ctx.state === 'suspended') await this.ctx.resume();
+  }
+
+  async _startLimiter() {
+    if (this._limiterStarted || this.iosFallback || !this.ctx?.audioWorklet) return;
+    this._limiterStarted = true;
+    try {
+      await this.ctx.audioWorklet.addModule(new URL('./limiter-worklet.js', import.meta.url));
+      const node = new AudioWorkletNode(this.ctx, 'true-peak-limiter', {
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+        outputChannelCount: [2]
+      });
+      const previous = this.limiter;
+      this._playbackOutput.disconnect(previous);
+      this.sfxBus.disconnect(previous);
+      previous.disconnect(this._vinylGain);
+      this._playbackOutput.connect(node);
+      this.sfxBus.connect(node);
+      node.connect(this._vinylGain);
+      this.limiter = node;
+      this._limiterReady = true;
+    } catch (err) {
+      this._limiterError = String(err?.message || err);
+      console.info('真峰值限制器不可用，保留动态压缩安全回退。', err);
+    }
   }
 
   /* 回放端：RIAA 去加重 → 唱头谐振峰 → 磨损高频滚降 */
@@ -249,7 +287,7 @@ export class VinylAudio {
       if (!this.enabled) {
         this.iosNoise.pause();
         this.iosNoise.volume = 0;
-      } else if (!this.ducking && this.iosStarted) {
+      } else if (this.ducking && this.iosStarted) {
         this.iosNoise.volume = this._iosBedVolume();
         if (this.iosNoise.paused) this.iosNoise.play().catch(() => {});
       }
@@ -261,40 +299,54 @@ export class VinylAudio {
   }
 
   setMode(mode) {
-    this.mode = mode === 'vinyl' ? 'vinyl' : 'reference';
+    const next = mode === 'vinyl' ? 'vinyl' : 'reference';
+    if (next === this.mode) return;
+    this.mode = next;
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
-    const ramp = (param, value, tau = 0.045) => {
-      param.cancelScheduledValues(now);
-      param.setTargetAtTime(value, now, tau);
+    const hold = (param) => {
+      if (param.cancelAndHoldAtTime) param.cancelAndHoldAtTime(now);
+      else {
+        const value = param.value;
+        param.cancelScheduledValues(now);
+        param.setValueAtTime(value, now);
+      }
     };
-    ramp(this._directGain.gain, this.mode === 'reference' ? 1 : 0);
-    ramp(this._vinylGain.gain, this.mode === 'vinyl' ? 1 : 0);
-    ramp(this.sfxBus.gain, this.mode === 'vinyl' ? 1 : 0);
-    this._setMotor(this.mode === 'vinyl' && this.ducking);
+    const switchAt = now + 0.02;
+    hold(this.master.gain);
+    this.master.gain.linearRampToValueAtTime(0, now + 0.018);
+    this.master.gain.setValueAtTime(0, switchAt);
+    this.master.gain.linearRampToValueAtTime(this.enabled ? 1 : 0, now + 0.038);
+
+    const switchGain = (param, value) => {
+      hold(param);
+      param.setValueAtTime(value, switchAt);
+    };
+    switchGain(this._directGain.gain, this.mode === 'reference' ? 1 : 0);
+    switchGain(this._vinylGain.gain, this.mode === 'vinyl' ? 1 : 0);
+    switchGain(this.sfxBus.gain, this.mode === 'vinyl' ? 1 : 0);
+    this._setMotor(this.mode === 'vinyl' && this.ducking && !this.cue);
     this._applyIosBedVolume();
   }
 
   setDucking(on) {
     this.ducking = Boolean(on);
     if (this.iosNoise) {
-      if (this.ducking) {
-        this.iosNoise.pause();
-        this.iosNoise.volume = 0;
-      } else if (this.enabled) {
-        this.iosStarted = true;
-        this.iosNoise.volume = this._iosBedVolume();
-        this.iosNoise.play().catch(() => {});
-      }
+      this.iosStarted = this.ducking;
+      this.iosNoise.volume = this._iosBedVolume();
+      if (this.iosNoise.volume > 0 && this.iosNoise.paused) this.iosNoise.play().catch(() => {});
+      else if (this.iosNoise.volume === 0) this.iosNoise.pause();
     }
     if (!this.ctx) return;
     this._applyNoiseLevels();
-    this._setMotor(this.ducking);
+    this._setMotor(this.mode === 'vinyl' && this.ducking && !this.cue);
   }
 
   setCue(on) {
     this.cue = Boolean(on);
     this._applyNoiseLevels();
+    this._setMotor(this.mode === 'vinyl' && this.ducking && !this.cue);
+    this._applyIosBedVolume();
   }
 
   setCondition(condition) {
@@ -351,7 +403,7 @@ export class VinylAudio {
     const base = this._noiseBase();
     const wear = clamp(this._wear, 0, 1);
     const progress = clamp(this.progress, 0, 1);
-    const scale = this.cue ? 0.88 : this.ducking ? 0.56 : 1;
+    const scale = this.mode !== 'vinyl' ? 0 : this.cue ? 0.25 : this.ducking ? 1 : 0;
     const crackle = (base.crackle + wear * 0.014 + progress * 0.009) * scale;
     const hiss = (base.hiss + wear * 0.0018 + progress * 0.0010) * scale;
     const rumble = (base.rumble + wear * 0.050) * scale;
@@ -381,8 +433,8 @@ export class VinylAudio {
       setParam('burstRate', base.burstRate ?? 0.12);
       setParam('popAmp', base.popAmp ?? 0.35);
       setParam('decayMs', base.decayMs ?? 12);
-      const tick = base.tick ?? 0;
-      setParam('tickLevel', tick + (wear > 0.45 ? (wear - 0.45) * 0.10 : 0));
+      const tick = (base.tick ?? 0) + (wear > 0.45 ? (wear - 0.45) * 0.10 : 0);
+      setParam('tickLevel', tick * scale);
     }
   }
 
@@ -410,14 +462,15 @@ export class VinylAudio {
       this._innerLp.frequency.setTargetAtTime(
         this._innerOuter - progress * (this._innerOuter - this._innerInner), now, 0.4);
     }
-    if (this._tracing) {
-      const drive = 1.05 + wear * 0.6 + progress * 0.45 + (p.glare ?? 0) * 0.6;
+    const drive = 1.05 + wear * 0.6 + progress * 0.45 + (p.glare ?? 0) * 0.6;
+    if (this._tracing && (!Number.isFinite(this._tracingDrive) || Math.abs(drive - this._tracingDrive) > 0.002)) {
       const curve = new Float32Array(1024);
       for (let i = 0; i < curve.length; i++) {
         const x = (i / (curve.length - 1)) * 2 - 1;
         curve[i] = Math.tanh(x * drive) / drive;
       }
       this._tracing.curve = curve;
+      this._tracingDrive = drive;
     }
   }
 
@@ -444,7 +497,10 @@ export class VinylAudio {
 
   setNeedleProgress(p) {
     const v = Number(p);
-    this.progress = Number.isFinite(v) ? clamp(v, 0, 1) : this.progress;
+    if (!Number.isFinite(v)) return;
+    const next = clamp(v, 0, 1);
+    if (Math.abs(next - this.progress) < 0.0015) return;
+    this.progress = next;
     this._applyNoiseLevels();
     this._applyProfileTone();
   }
@@ -792,22 +848,37 @@ export class VinylAudio {
   _setMotor(on) {
     if (!this._motorGain || !this.ctx) return;
     const now = this.ctx.currentTime;
-    this._motorGain.gain.setTargetAtTime(on ? 0.0011 : 0.00018, now, 0.32);
+    this._motorGain.gain.setTargetAtTime(on ? 0.0011 : 0, now, 0.32);
+  }
+
+  async _createLimiter(ctx) {
+    const fallback = ctx.createDynamicsCompressor();
+    fallback.threshold.value = -1;
+    fallback.knee.value = 0;
+    fallback.ratio.value = 20;
+    fallback.attack.value = 0.003;
+    fallback.release.value = 0.12;
+    try {
+      await ctx.audioWorklet.addModule(new URL('./limiter-worklet.js', import.meta.url));
+      return new AudioWorkletNode(ctx, 'true-peak-limiter', {
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+        outputChannelCount: [2]
+      });
+    } catch {
+      return fallback;
+    }
   }
 
   /* ── 离线渲染：与实时链同构图，供 A/B 与确定性自检 ── */
-  async renderOffline(sourceBuffer, { profile = null, noise = true, seconds = 0, from = 0, progress = 0.35 } = {}) {
-    const rate = 44100;
+  async renderOffline(sourceBuffer, { profile = null, noise = true, seconds = 0, from = 0, progress = 0.35, rpm = 100 / 3, sampleRate = sourceBuffer.sampleRate || 44100, masterGain = 1 } = {}) {
+    const rate = sampleRate;
     const dur = seconds > 0 ? seconds : sourceBuffer.duration - from;
     const frames = Math.max(1, Math.floor(dur * rate));
     const ctx = new OfflineAudioContext(2, frames, rate);
     const master = ctx.createGain();
-    master.gain.value = 0.9;
+    master.gain.value = masterGain;
     master.connect(ctx.destination);
-    const limiter = ctx.createDynamicsCompressor();
-    limiter.threshold.value = -1; limiter.knee.value = 0; limiter.ratio.value = 20;
-    limiter.attack.value = 0.003; limiter.release.value = 0.12;
-    limiter.connect(master);
 
     const grooveTrim = ctx.createGain();
     grooveTrim.gain.value = 0.05;
@@ -834,6 +905,8 @@ export class VinylAudio {
     const wearShelf = ctx.createBiquadFilter();
     wearShelf.type = 'highshelf'; wearShelf.frequency.value = 10000;
     wearShelf.gain.value = -((profile?.hfLoss ?? 1.2) + (profile?.wear ?? 0) * 1.4 + progress * 1.1);
+    const limiter = await this._createLimiter(ctx);
+    limiter.connect(master);
     node.connect(cart); cart.connect(wearShelf); wearShelf.connect(limiter);
 
     const src = ctx.createBufferSource();
@@ -846,7 +919,7 @@ export class VinylAudio {
     const wow = ctx.createDelay(0.05);
     wow.delayTime.value = 0.015;
     const mech = profile?.mechanics || {};
-    const base = (100 / 3) / 60;
+    const base = (rpm === 45 ? 45 : 100 / 3) / 60;
     const mk = (freq, pct) => {
       const lfo = ctx.createOscillator();
       lfo.frequency.value = freq;
@@ -925,7 +998,7 @@ export class VinylAudio {
           numberOfInputs: 1,
           numberOfOutputs: 3,
           outputChannelCount: [2, 2, 2],
-          processorOptions: { seed, rpm: 100 / 3 }
+          processorOptions: { seed, rpm: rpm === 45 ? 45 : 100 / 3 }
         });
         const wear = profile?.wear ?? 0;
         const setP = (name, v) => { const p = wn.parameters.get(name); if (p) p.value = v; };
@@ -1063,7 +1136,9 @@ export class VinylAudio {
   }
 
   _iosBedVolume() {
-    return this.mode === 'reference' ? 0 : (this._noiseBase().ios ?? 0.07);
+    return this.mode === 'vinyl' && this.enabled && this.ducking && !this.cue
+      ? (this._noiseBase().ios ?? 0.07)
+      : 0;
   }
 
   _applyIosBedVolume() {
@@ -1133,11 +1208,32 @@ export class VinylAudio {
     return URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }));
   }
 
+  dispose() {
+    this._stopBufferNoise();
+    for (const osc of [...this._motorOsc, this._wowLfo, this._rippleLfo, this._eccLfo, this._flutterLfo, this._warpLfo]) {
+      try { osc?.stop(); } catch { /* already stopped */ }
+    }
+    try { this._driftSource?.stop(); } catch { /* already stopped */ }
+    try { this._workletNode?.disconnect(); } catch { /* not connected */ }
+    if (this._iosNoise) {
+      this._iosNoise.pause();
+      this._iosNoise.remove();
+      this.iosNoise = null;
+    }
+    if (this._iosNoiseUrl) URL.revokeObjectURL(this._iosNoiseUrl);
+    this._iosNoiseUrl = null;
+    if (this.ctx && this.ctx.state !== 'closed') this.ctx.close().catch(() => {});
+    this.ctx = null;
+  }
+
   get debug() {
     const params = this._workletNode?.parameters;
     return {
       engine: this._workletReady ? 'audioworklet' : 'buffer',
       mode: this.mode,
+      transport: this.ducking ? this.cue ? 'cue' : 'playing' : 'stopped',
+      limiterReady: this._limiterReady,
+      limiterError: this._limiterError,
       directGain: this._directGain?.gain.value ?? null,
       vinylGain: this._vinylGain?.gain.value ?? null,
       workletReady: this._workletReady,

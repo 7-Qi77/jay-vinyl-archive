@@ -11,6 +11,9 @@ on:
       - 'js/**'
       - 'assets/**'
       - 'tests/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -28,28 +31,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
 
-      # 只把线上需要的文件装进 _site，tools / tests / scripts 不对外发布
-      - name: 组装发布目录
+      - name: 安装锁定依赖
+        run: npm ci
+
+      - name: 构建并校验发布目录
+        run: npm run build:web -- _site
+
+      - name: 安装测试浏览器
+        run: npx playwright install --with-deps chromium
+
+      - name: 发布产物浏览器与无障碍回归
         run: |
-          mkdir -p _site
-          cp index.html styles.css sw.js manifest.webmanifest _site/
-          cp -R js _site/js
-          cp -R assets _site/assets
-          # 源 MP3 只留在仓库归档，线上只发布转码后的 M4A，减小 Pages artifact
-          find _site/assets/audio -maxdepth 1 -type f -name '*.mp3' -delete
-
-      # 第三方组件体量大，发布前统一压缩；Pages 仍会再做 gzip。
-      - name: 压缩 vendor JS
-        run: |
-          set -euo pipefail
-          find _site/assets/vendor -type f -name '*.js' -print0 | while IFS= read -r -d '' f; do
-            npx --yes esbuild@0.25.3 "$f" --minify --outfile="$f.min" >/dev/null
-            mv "$f.min" "$f"
-          done
-
-      - name: 发布前冒烟检查
-        run: node tests/deploy-check.mjs _site
+          python -m http.server 4173 --directory _site > /tmp/jc-pages.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          BASE_URL=http://127.0.0.1:4173 BROWSER_CHANNEL=chromium npm run test:smoke
+          BASE_URL=http://127.0.0.1:4173 BROWSER_CHANNEL=chromium npm run test:a11y
+          BASE_URL=http://127.0.0.1:4173 BROWSER_CHANNEL=chromium npm run test:perf
 
       - name: 发布体积
         run: |

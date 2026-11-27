@@ -21,6 +21,7 @@ const required = [
   'js/covers.js',
   'js/lyricstore.js',
   'js/vinyl-worklet.js',
+  'js/limiter-worklet.js',
   'assets/vendor/three.module.js',
   'assets/icons/icon-192.png',
   'assets/icons/icon-512.png',
@@ -40,6 +41,20 @@ for (const token of ['manifest.webmanifest', 'apple-touch-icon', 'og:image', 'ca
 if (!/serviceWorker/.test(app) || !/sw\.js/.test(app)) errors.push('service worker registration missing');
 if (!css.includes(':focus-visible')) errors.push('focus-visible styles missing');
 if (!/preload="none"/.test(html)) errors.push('local audio preload should be none');
+const moduleVersion = html.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
+if (!moduleVersion) errors.push('app module cache version missing');
+else {
+  for (const name of ['audio', 'scene', 'retro']) {
+    if (!app.includes(`./${name}.js?v=${moduleVersion}`)) errors.push(`${name} import version mismatch`);
+  }
+  const sw = text('sw.js');
+  if (!sw.includes(`js/app.js?v=${moduleVersion}`)) errors.push('service worker app version mismatch');
+  if (!sw.includes('limiter-worklet.js')) errors.push('service worker limiter missing');
+}
+for (const match of html.matchAll(/(?:src|href)="(\.\/[^"]+)"/g)) {
+  const localPath = match[1].slice(2).split(/[?#]/)[0];
+  if (!exists(localPath)) errors.push(`missing local reference ${match[1]}`);
+}
 
 if (exists('assets/audio/manifest.json')) {
   const manifest = JSON.parse(text('assets/audio/manifest.json'));
@@ -53,6 +68,8 @@ if (exists('assets/audio/manifest.json')) {
     if (!/\.m4a$/i.test(f.file)) errors.push(`audio not m4a: ${f.file}`);
     total += fs.statSync(rel(p)).size;
   }
+  const mp3Files = fs.readdirSync(rel('assets/audio')).filter((f) => /\.mp3$/i.test(f));
+  if (mp3Files.length) errors.push(`source MP3 should not ship: ${mp3Files.join(', ')}`);
   if (total > 18 * 1024 * 1024) errors.push(`audio payload too large: ${(total / 1024 / 1024).toFixed(1)}MB`);
 } else {
   errors.push('missing assets/audio/manifest.json');

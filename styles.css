@@ -1748,6 +1748,15 @@ body.immersive .topbar * { opacity: 0; pointer-events: none !important; }
 .imx.is-idle .imx__player { opacity: 0; pointer-events: none; }
 .imx.is-idle .imx__lyric { opacity: 0.75; }
 
+@media (pointer: coarse) {
+  .imx__actions { gap: 14px; }
+  .imx__actions button { min-height: 44px; display: inline-flex; align-items: center; }
+  .imx__play, .imx__step { width: 44px; height: 44px; }
+  .imx__step svg { width: 16px; height: 16px; }
+  .imx__bar { min-width: 96px; }
+  .imx__bar::before { content: ''; position: absolute; inset: -22px 0; }
+}
+
 /* ── 柜底说明 ──────────────────────────────────────────────── */
 
 .crate-footer {
@@ -1909,12 +1918,13 @@ body.immersive .topbar * { opacity: 0; pointer-events: none !important; }
 .tracks::-webkit-scrollbar { width: 3px; }
 .tracks::-webkit-scrollbar-thumb { background: rgba(201, 168, 106, 0.25); border-radius: 2px; }
 .tracks > li { list-style: none; }
+.track-row { position: relative; }
 .track {
   width: 100%;
   display: flex;
   align-items: baseline;
   gap: 14px;
-  padding: 7px 0;
+  padding: 7px 38px 7px 0;
   text-align: left;
   color: inherit;
   border-bottom: 1px solid var(--line-soft);
@@ -1929,10 +1939,14 @@ body.immersive .topbar * { opacity: 0; pointer-events: none !important; }
 }
 .track__name { font-size: 14px; letter-spacing: 0.05em; font-weight: 300; color: #ddd4c5; }
 .track__lyric {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
   margin-left: auto;
   flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
   font-size: 7.5px;
@@ -1943,7 +1957,7 @@ body.immersive .topbar * { opacity: 0; pointer-events: none !important; }
   opacity: 0.55;
   transition: color 0.3s, border-color 0.3s, opacity 0.3s, background 0.3s;
 }
-.track:hover .track__lyric {
+.track-row:hover .track__lyric {
   opacity: 1;
   color: var(--brass);
   border-color: rgba(201, 168, 106, 0.45);
@@ -2103,7 +2117,7 @@ body.immersive .topbar * { opacity: 0; pointer-events: none !important; }
 .stage-caption {
   position: absolute;
   right: clamp(20px, 4vw, 56px);
-  bottom: 196px;
+  bottom: calc(clamp(150px, 19vh, 196px) + 84px);
   display: flex;
   align-items: center;
   gap: clamp(14px, 2vw, 28px);
@@ -3463,11 +3477,11 @@ body.immersive .bench { display: none; }
   }
   .stage-tracks { margin-top: 10px; }
   .stage-tracks__head { padding: 8px 0 6px; }
-  .track { min-height: 46px; padding: 10px 0; gap: 10px; }
+  .track { min-height: 46px; padding: 10px 52px 10px 0; gap: 10px; }
   .track__name { font-size: 13.5px; }
   .track__num { font-size: 10px; }
   .track__src { font-size: 8px; padding: 2px 5px; }
-  .track__lyric { width: 30px; height: 26px; font-size: 9px; }
+  .track__lyric { width: 44px; height: 44px; border: 0; font-size: 10px; }
   .track__eq { display: none; }
   .memory__toggle { min-height: 40px; }
   .stage-nav { margin-top: 14px; padding-bottom: 4px; }

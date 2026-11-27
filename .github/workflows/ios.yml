@@ -12,15 +12,32 @@ on:
     paths:
       - 'index.html'
       - 'styles.css'
+      - 'sw.js'
+      - 'manifest.webmanifest'
       - 'js/**'
       - 'assets/**'
       - 'capacitor.config.json'
       - 'scripts/**'
+      - 'tests/**'
       - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/ios.yml'
 
 jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build:ios-web
+
   build:
+    needs: preflight
     runs-on: macos-14
     timeout-minutes: 40
     steps:
@@ -28,10 +45,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: npm
 
-      - name: 安装依赖
-        run: npm install --no-audit --no-fund
+      - name: 安装锁定依赖
+        run: npm ci
 
       - name: 生成 webDir
         run: npm run build:ios-web

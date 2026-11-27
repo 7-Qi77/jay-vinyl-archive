@@ -1,6 +1,5 @@
 import { ALBUMS, pad2, normTitle, titleIndexOf } from './data.js';
-import { createTurntable } from './scene.js?v=20261127-final';
-import { VinylAudio } from './audio.js?v=20261127-final';
+import { VinylAudio } from './audio.js?v=20261127-r3';
 import { initCovers, getCoverUrls, getStageImage, initTracklists } from './covers.js';
 import {
   initMedia,
@@ -15,7 +14,7 @@ import {
   adoptFullTracklist
 } from './media.js';
 import { initLyricStore, readLyricData, readLyric, writeLyric, removeLyric, migrateLyricIndices } from './lyricstore.js';
-import { bootRetro } from './retro.js?v=20261127-final';
+import { bootRetro } from './retro.js?v=20261127-r3';
 
 const emit = (name, detail) => window.dispatchEvent(new CustomEvent(name, { detail }));
 
@@ -111,9 +110,8 @@ const lyricsAudioProgress = $('lyricsAudioProgress');
 const lyricsAudioTime = $('lyricsAudioTime');
 const lyricsAudioFile = $('lyricsAudioFile');
 const audioEl = $('localAudioEl');
-/* Apple 试听是跨域资源：Web Audio 的 MediaElementAudioSourceNode 只在 CORS 模式下出声，
-   不声明 crossOrigin 时整条输出恒为 0（表现为「只有站内三首 MP3 有声音」）。 */
-audioEl.crossOrigin = 'anonymous';
+/* Apple 试听是跨域资源：Web Audio 的 MediaElementAudioSourceNode 只在 CORS 模式下出声。
+   旧 Safari 走元素直出时不能强制 CORS，否则无 CORS 音源会被误判为加载失败。 */
 /* iOS/iPadOS 的 Web Audio 默认会被静音拨片整段掐掉。
    Safari 16.4+ 暴露 Audio Session API：在用户手势里声明 playback 后，
    Web Audio 可以正常出声，因此支持该 API 的 Apple 设备保留完整黑胶链路；
@@ -124,6 +122,8 @@ const HAS_AUDIO_SESSION_API = (() => {
   try { return Boolean(navigator.audioSession); } catch { return false; }
 })();
 const APPLE_WEB_AUDIO = IS_APPLE_TOUCH && HAS_AUDIO_SESSION_API;
+const CAN_USE_WEB_AUDIO = !IS_APPLE_TOUCH || APPLE_WEB_AUDIO;
+if (CAN_USE_WEB_AUDIO) audioEl.crossOrigin = 'anonymous';
 const immerseBtn = $('immerseBtn');
 const imxUI = $('imxUI');
 const imxTitle = $('imxTitle');
@@ -135,6 +135,7 @@ const imxPlayer = $('imxPlayer');
 const imxPlay = $('imxPlay');
 const imxTime = $('imxTime');
 const imxBar = $('imxBar');
+const imxBarWrap = $('imxBarWrap');
 const imxLyrics = $('imxLyrics');
 const imxSound = $('imxSound');
 const imxExit = $('imxExit');
@@ -804,15 +805,15 @@ function accrueWear() {
       const n = Number(activeAudioKey.split('-')[0]);
       const secs = getWearSeconds(n) + d;
       wearCache.set(n, secs);
-      try {
-        localStorage.setItem(`jc-wear-${n}`, String(Math.round(secs)));
-      } catch {
-        /* 存储不可用时跳过 */
-      }
       const nowMs = performance.now();
-      if (nowMs > wearFlushAt && state.scene) {
+      if (nowMs > wearFlushAt) {
         wearFlushAt = nowMs + 3000;
-        state.scene.setWear();
+        try {
+          localStorage.setItem(`jc-wear-${n}`, String(Math.round(secs)));
+        } catch {
+          /* 存储不可用时跳过 */
+        }
+        state.scene?.setWear();
         // 磨损随播放缓慢累积，状态噪底同步变密（同 seed 不会重置噪声图案）
         audio.setRecord({ wear: wearFor(n, Number(activeAudioKey.split('-')[1])) });
       }
@@ -881,6 +882,9 @@ function updateAudioProgress() {
   const ok = entry && Number.isFinite(duration) && duration > 0;
   const pct = ok ? Math.min(100, (time / duration) * 100) : 0;
   const sheetIsCurrent = activeAudioKey === sheetAudioKey();
+  const pctLabel = String(Math.round(pct));
+  deckBarWrap.setAttribute('aria-valuenow', pctLabel);
+  imxBarWrap.setAttribute('aria-valuenow', pctLabel);
 
   lyricsAudioProgress.style.width = `${sheetIsCurrent ? pct : 0}%`;
   imxBar.style.width = `${pct}%`;
@@ -1124,12 +1128,15 @@ function enterImmersive() {
   imxUI.hidden = false;
   imxUI.setAttribute('aria-hidden', 'false');
   imxUI.inert = false;
+  if (mainEl) mainEl.inert = true;
+  if (topbarEl) topbarEl.inert = true;
   updateImxInfo();
   updateAudioUI();
   updateTimedLyric();
   state.scene?.setImmersive(true);
   resetCursorHover();
   requestAnimationFrame(() => imxUI.classList.add('is-open'));
+  setTimeout(() => imxExit.focus({ preventScroll: true }), 80);
   showImxBar();
   if (document.documentElement.requestFullscreen) {
     document.documentElement.requestFullscreen().catch(() => {});
@@ -1146,6 +1153,8 @@ function exitImmersive() {
   imxUI.setAttribute('aria-hidden', 'true');
   viewStage.classList.remove('is-immersive');
   document.body.classList.remove('immersive');
+  if (mainEl) mainEl.inert = false;
+  if (topbarEl) topbarEl.inert = false;
   state.scene?.setImmersive(false);
   resetCursorHover();
   if (document.fullscreenElement) {
@@ -1396,8 +1405,6 @@ function flipStageSleeve() {
   const flipped = jacket.classList.toggle('is-flipped');
   stageSleeve.classList.toggle('is-flipped', flipped);
   stageSleeve.setAttribute('aria-pressed', flipped ? 'true' : 'false');
-  const album = ALBUMS[state.index];
-  stageSleeve.setAttribute('aria-label', flipped ? `返回《${album.title}》原版封面` : `翻面查看《${album.title}》内页`);
   const label = stageSleeve.querySelector('.stage-sleeve__flip span');
   if (label) label.textContent = flipped ? '封面' : '翻面';
   audio.playSleeve();
@@ -1413,7 +1420,6 @@ function buildRack() {
     btn.dataset.cursor = '';
     btn.style.setProperty('--i', String(i));
     btn.style.setProperty('--rot', `${((i * 37) % 7 - 3) * 0.45}deg`);
-    btn.setAttribute('aria-label', `抽出《${album.title}》，${album.year} 年专辑`);
 
     btn.appendChild(jacketEl(album));
     const hint = document.createElement('span');
@@ -1470,20 +1476,18 @@ function fillStage(album, index) {
     .map((t, i) => {
       const has = lyricAvailable(album.n, i);
       const local = hasLocalAudio(album.n, i);
-      return `<li><button class="track" type="button" data-track="${i}" data-cursor="播放">
+      return `<li class="track-row"><button class="track" type="button" data-track="${i}" data-cursor="播放">
         <span class="track__num">A${i + 1}</span>
         <span class="track__name">${escapeHtml(t)}</span>
         <span class="track__src${local ? ' track__src--local' : ''}">${local ? '完整版' : '试听'}</span>
         <span class="track__eq" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span class="track__lyric${has ? ' has-lyrics' : ''}" data-lyric="${i}" data-cursor="歌词" aria-hidden="true">词</span>
-      </button></li>`;
+      </button><button class="track__lyric${has ? ' has-lyrics' : ''}" type="button" data-lyric="${i}" data-cursor="歌词" aria-label="查看《${escapeHtml(t)}》歌词">词</button></li>`;
     })
     .join('');
 
   stageSleeve.replaceChildren(jacketEl(album, { stage: true }), flipChipEl());
   stageSleeve.classList.remove('is-flipped');
   stageSleeve.setAttribute('aria-pressed', 'false');
-  stageSleeve.setAttribute('aria-label', `翻面查看《${album.title}》内页`);
 
   immerseBtn.disabled = false;
   syncMemory(album);
@@ -1506,9 +1510,31 @@ function fillStage(album, index) {
 }
 
 /* ── 3D 唱机 ──────────────────────────────────────────────── */
-function ensureScene() {
+let sceneModulePromise = null;
+function preloadScene() {
+  if (!sceneModulePromise) sceneModulePromise = import('./scene.js?v=20261127-r3').catch((err) => {
+    sceneModulePromise = null;
+    throw err;
+  });
+  return sceneModulePromise;
+}
+
+async function ensureScene() {
   if (state.scene || state.sceneFailed) return;
+  let pendingDiscSeek = null;
+  let discSeekFrame = 0;
+  const flushDiscSeek = () => {
+    discSeekFrame = 0;
+    if (pendingDiscSeek === null || !Number.isFinite(audioEl.duration)) return;
+    const p = pendingDiscSeek;
+    pendingDiscSeek = null;
+    audioEl.currentTime = Math.max(0, Math.min(0.985, p)) * audioEl.duration;
+    updateAudioProgress();
+    updateTimedLyric();
+    cursorLabel.textContent = fmtClock(audioEl.currentTime);
+  };
   try {
+    const { createTurntable } = await preloadScene();
     state.scene = createTurntable(canvas, {
       onNeedleDrop: () => {
         audio.playNeedle();
@@ -1518,13 +1544,11 @@ function ensureScene() {
       // 拖动唱片跳转：径向位置映射播放进度
       canSeekDisc: () => Boolean(activeAudioKey) && Number.isFinite(audioEl.duration) && audioEl.duration > 0,
       onDiscSeek: (p) => {
-        if (!Number.isFinite(audioEl.duration)) return;
-        audioEl.currentTime = Math.max(0, Math.min(0.985, p)) * audioEl.duration;
-        updateAudioProgress();
-        updateTimedLyric();
-        cursorLabel.textContent = fmtClock(audioEl.currentTime);
+        pendingDiscSeek = p;
+        if (!discSeekFrame) discSeekFrame = requestAnimationFrame(flushDiscSeek);
       },
       onDiscSeekEnd: () => {
+        flushDiscSeek();
         cursorLabel.textContent = '';
       },
       isPlaying: () => Boolean(activeAudioKey) && !audioEl.paused,
@@ -1614,7 +1638,7 @@ async function enterStage(index, sourceEl) {
     viewCrate.hidden = true;
     viewStage.hidden = false;
     document.body.classList.add('stage-on');
-    ensureScene();
+    await ensureScene();
     playScene(album, true);
     stageSleeve.classList.add('is-revealed');
     veil.classList.remove('is-on');
@@ -1649,7 +1673,7 @@ async function enterStage(index, sourceEl) {
   void viewStage.offsetWidth;
   viewStage.classList.add('is-entering');
 
-  ensureScene();
+  await ensureScene();
   playScene(album, true);
 
   await nextFrame();
@@ -1694,7 +1718,7 @@ async function enterStage(index, sourceEl) {
 
   try {
     await anim.finished;
-  } catch (e) {
+  } catch {
     /* 动画被取消时直接落位 */
   }
 
@@ -1901,11 +1925,15 @@ enterBtn.addEventListener('click', async () => {
   audio.unlock().catch(() => {});
   // iOS 只有在 Audio Session 声明成功时才接入 Web Audio；否则保留 <audio> 直出兜底
   if (!audio.iosFallback) audio.attachElement(audioEl);
+  else audioEl.removeAttribute('crossorigin');
   audio.setRpm(state.rpm);
   audio.setMode(state.mode);
   audio.setEnabled(state.sound);
   gate.classList.add('is-open');
   document.body.classList.remove('is-gate');
+  const warmScene = () => preloadScene().catch(() => {});
+  if ('requestIdleCallback' in window) window.requestIdleCallback(warmScene, { timeout: 1800 });
+  else setTimeout(warmScene, 350);
 
   setTimeout(() => {
     viewCrate.classList.add('is-entering');
@@ -2037,7 +2065,7 @@ imxPrev.addEventListener('click', () => stepTrack(-1));
 imxNext.addEventListener('click', () => stepTrack(1));
 
 // 进度条拖动（听音室 / 沉浸模式）
-for (const [wrap, bar] of [[deckBarWrap, deckBar], [imxBar.parentElement, imxBar]]) {
+for (const wrap of [deckBarWrap, imxBarWrap]) {
   if (!wrap) continue;
   let dragging = false;
   wrap.addEventListener('pointerdown', (e) => {
@@ -2050,6 +2078,21 @@ for (const [wrap, bar] of [[deckBarWrap, deckBar], [imxBar.parentElement, imxBar
   });
   wrap.addEventListener('pointerup', () => { dragging = false; });
   wrap.addEventListener('pointercancel', () => { dragging = false; });
+  wrap.addEventListener('keydown', (e) => {
+    if (!activeAudioKey || !Number.isFinite(audioEl.duration)) return;
+    const duration = audioEl.duration;
+    const step = e.shiftKey ? 10 : 5;
+    let target = audioEl.currentTime;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') target += step;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') target -= step;
+    else if (e.key === 'Home') target = 0;
+    else if (e.key === 'End') target = duration * 0.985;
+    else return;
+    e.preventDefault();
+    audioEl.currentTime = Math.max(0, Math.min(duration * 0.985, target));
+    updateAudioProgress();
+    updateTimedLyric();
+  });
 }
 
 immerseBtn.addEventListener('click', enterImmersive);
@@ -2057,6 +2100,22 @@ imxExit.addEventListener('click', () => exitImmersive());
 imxLyrics.addEventListener('click', () => openLyrics(lyricsState.track, imxLyrics));
 imxUI.addEventListener('pointermove', showImxBar);
 imxUI.addEventListener('pointerdown', showImxBar);
+imxUI.addEventListener('focusin', showImxBar);
+imxUI.addEventListener('keydown', (e) => {
+  if (e.key !== 'Tab') return;
+  const items = [...imxUI.querySelectorAll('button:not(:disabled), [tabindex="0"]')]
+    .filter((el) => el.getClientRects().length > 0);
+  if (!items.length) return;
+  const first = items[0];
+  const last = items[items.length - 1];
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault();
+    first.focus();
+  }
+});
 window.addEventListener('pointermove', () => {
   if (imxState.open) showImxBar();
 }, { passive: true });
@@ -2075,6 +2134,8 @@ audioEl.addEventListener('play', () => {
 });
 audioEl.addEventListener('pause', () => {
   deckSpinning = false;
+  state.scene?.setPlaying(false);
+  audio.setDucking(false);
   updateAudioUI();
 });
 audioEl.addEventListener('ended', () => {
@@ -2116,6 +2177,23 @@ rpmButtons.forEach((btn) => {
     audio.setRpm(state.rpm);
     state.scene?.setSpeed(state.rpm);
   });
+});
+
+canvas.addEventListener('keydown', (e) => {
+  if (e.key === ' ' || e.key === 'Enter') {
+    e.preventDefault();
+    togglePlayback();
+    return;
+  }
+  if (!activeAudioKey || !Number.isFinite(audioEl.duration)) return;
+  const step = e.shiftKey ? 15 : 5;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    e.preventDefault();
+    audioEl.currentTime = Math.max(0, Math.min(audioEl.duration * 0.985,
+      audioEl.currentTime + (e.key === 'ArrowRight' ? step : -step)));
+    updateAudioProgress();
+    updateTimedLyric();
+  }
 });
 
 stageSleeve.addEventListener('click', flipStageSleeve);
@@ -2473,6 +2551,9 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pageshow', () => {
   if (audio.ctx?.state === 'suspended') audio.ctx.resume().catch(() => {});
+});
+window.addEventListener('pagehide', (event) => {
+  if (!event.persisted) audio.dispose();
 });
 emit('jc:album', { index: state.index });
 emit('jc:view', { view: state.view });

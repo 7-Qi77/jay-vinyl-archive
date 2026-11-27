@@ -12,6 +12,7 @@
   <link rel="canonical" href="https://7-Qi77.github.io/jay-vinyl-archive/" />
   <meta name="color-scheme" content="dark" />
   <meta name="robots" content="index,follow" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
 
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="周杰伦 · 黑胶典藏" />
@@ -52,7 +53,7 @@
   </div>
 
   <header class="topbar">
-    <a class="brand" href="#" id="brandLink" aria-label="返回唱片柜">
+    <a class="brand" href="#" id="brandLink" aria-label="JC JAY CHOU THE VINYL ARCHIVE · 返回唱片柜">
       <span class="brand__mark">JC</span>
       <span class="brand__text">
         <strong>JAY CHOU</strong>
@@ -190,13 +191,13 @@
       <div class="stage-visual">
         <div class="stage-visual__light" aria-hidden="true"></div>
         <div class="stage-canvas-wrap" id="canvasWrap">
-          <canvas id="vinylCanvas" aria-label="3D 黑胶唱机：拖拽唱臂落针，拖动唱片跳转进度"></canvas>
+          <canvas id="vinylCanvas" tabindex="0" aria-label="3D 黑胶唱机：空格播放或暂停，左右方向键快进或快退，也可拖拽唱臂和唱片"></canvas>
           <div class="stage-fallback" id="stageFallback" aria-hidden="true">
             <div class="fallback-disc"></div>
           </div>
         </div>
         <div class="stage-sleeve" id="stageSleeve" role="button" tabindex="0" aria-pressed="false"
-          aria-label="翻面查看专辑内页" data-cursor="翻面"></div>
+          data-cursor="翻面"></div>
 
         <div class="deck-player" id="deckPlayer" hidden>
           <div class="deck-player__transport">
@@ -220,7 +221,8 @@
               <button class="deck-player__condition" id="deckCondition" type="button"
                 data-cursor="唱片状态" title="切换唱片状态" aria-label="切换唱片状态：日常">日常</button>
             </div>
-            <div class="deck-player__bar" id="deckBarWrap" data-cursor="进度"><i id="deckBar"></i></div>
+            <div class="deck-player__bar" id="deckBarWrap" data-cursor="进度" role="slider" tabindex="0"
+              aria-label="播放进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="deckBar"></i></div>
           </div>
           <span class="deck-player__time" id="deckTime">--:--</span>
         </div>
@@ -286,7 +288,7 @@
           <span class="lyrics__audio-time" id="lyricsAudioTime">--:--</span>
         </div>
         <input type="file" id="lyricsAudioFile" accept="audio/*" hidden />
-        <div class="lyrics__body" id="lyricsBody"></div>
+        <div class="lyrics__body" id="lyricsBody" tabindex="0" role="region" aria-label="歌词正文"></div>
         <footer class="lyrics__foot">
           <span id="lyricsPage">01 / 04</span>
           <span class="lyrics__status" id="lyricsStatus" aria-live="polite"></span>
@@ -305,7 +307,7 @@
   <audio id="localAudioEl" preload="none" playsinline></audio>
 
   <!-- ───────────────────────── 沉浸模式 ───────────────────────── -->
-  <div class="imx" id="imxUI" hidden aria-hidden="true">
+  <div class="imx" id="imxUI" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-label="沉浸听音室">
     <div class="imx__top">
       <div class="imx__now">
         <span class="imx__kicker"><i></i> NOW PLAYING</span>
@@ -335,7 +337,8 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l9 7-9 7z"/><path d="M18 5v14" /></svg>
         </button>
         <span id="imxTime">--:--</span>
-        <div class="imx__bar" aria-hidden="true"><i id="imxBar"></i></div>
+        <div class="imx__bar" id="imxBarWrap" role="slider" tabindex="0"
+          aria-label="播放进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="imxBar"></i></div>
       </div>
     </div>
   </div>
@@ -383,6 +386,6 @@
 
   <noscript><p class="noscript">需要启用 JavaScript 才能进入听音室。</p></noscript>
 
-  <script type="module" src="./js/app.js?v=20261127-final"></script>
+  <script type="module" src="./js/app.js?v=20261127-r3"></script>
 </body>
 </html>
