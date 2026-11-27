@@ -1,6 +1,6 @@
 import { ALBUMS, pad2, normTitle, titleIndexOf } from './data.js';
-import { createTurntable } from './scene.js';
-import { VinylAudio } from './audio.js';
+import { createTurntable } from './scene.js?v=20261127-final';
+import { VinylAudio } from './audio.js?v=20261127-final';
 import { initCovers, getCoverUrls, getStageImage, initTracklists } from './covers.js';
 import {
   initMedia,
@@ -15,7 +15,7 @@ import {
   adoptFullTracklist
 } from './media.js';
 import { initLyricStore, readLyricData, readLyric, writeLyric, removeLyric, migrateLyricIndices } from './lyricstore.js';
-import { bootRetro } from './retro.js';
+import { bootRetro } from './retro.js?v=20261127-final';
 
 const emit = (name, detail) => window.dispatchEvent(new CustomEvent(name, { detail }));
 
@@ -129,6 +129,8 @@ const imxUI = $('imxUI');
 const imxTitle = $('imxTitle');
 const imxMeta = $('imxMeta');
 const imxLyric = $('imxLyric');
+const imxMemoryText = $('imxMemoryText');
+const imxMode = $('imxMode');
 const imxPlayer = $('imxPlayer');
 const imxPlay = $('imxPlay');
 const imxTime = $('imxTime');
@@ -145,12 +147,14 @@ const deckPrev = $('deckPrev');
 const deckNext = $('deckNext');
 const deckTitle = $('deckTitle');
 const deckSrc = $('deckSrc');
+const deckMode = $('deckMode');
 const deckCondition = $('deckCondition');
 const deckBar = $('deckBar');
 const deckBarWrap = $('deckBarWrap');
 const deckTime = $('deckTime');
 const lyricsSource = $('lyricsSource');
 const rpmButtons = [...document.querySelectorAll('.rpm-switch button')];
+const listenModeButtons = [...document.querySelectorAll('[data-listen-mode]')];
 const rpmLed = document.querySelector('.rpm-led');
 const mainEl = document.querySelector('main');
 const topbarEl = document.querySelector('.topbar');
@@ -185,6 +189,7 @@ const state = {
   scene: null,
   sceneFailed: false,
   rpm: 33,
+  mode: (() => { try { return localStorage.getItem('jc-listen-mode') === 'vinyl' ? 'vinyl' : 'reference'; } catch { return 'reference'; } })(),
   condition: 'daily',
   karaokeChar: (() => { try { return localStorage.getItem('jc-karaoke') !== '0'; } catch { return true; } })()
 };
@@ -356,6 +361,7 @@ function updateMemoryUI(note) {
   const has = Boolean(note.trim());
   memoryBlock.classList.toggle('has-note', has);
   memorySaved.textContent = has ? `“${note.trim()}”` : '写一句关于这张专辑的记忆';
+  imxMemoryText.textContent = has ? note.trim() : ALBUMS[state.index]?.desc || '';
 }
 
 function syncMemory(album) {
@@ -603,14 +609,46 @@ function fmtClock(seconds) {
 const BASE_RATE = () => (state.rpm === 45 ? 45 / (100 / 3) : 1);
 
 function applyBaseRate() {
+  const rate = audio.mode === 'reference' ? 1 : BASE_RATE();
   try {
     audioEl.preservesPitch = false;
     if ('webkitPreservesPitch' in audioEl) audioEl.webkitPreservesPitch = false;
-    audioEl.defaultPlaybackRate = BASE_RATE();
-    if (audioEl.paused || audioEl.ended) audioEl.playbackRate = BASE_RATE();
+    audioEl.defaultPlaybackRate = rate;
+    audioEl.playbackRate = rate;
   } catch {
     /* 个别浏览器不支持时忽略 */
   }
+}
+
+function applyListeningMode() {
+  const vinyl = state.mode === 'vinyl';
+  audio.setMode(state.mode);
+  applyBaseRate();
+  const label = vinyl ? '黑胶' : '原声';
+  listenModeButtons.forEach((btn) => {
+    const active = btn.dataset.listenMode === state.mode;
+    btn.classList.toggle('is-active', active);
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+  deckMode.textContent = label;
+  deckMode.classList.toggle('is-vinyl', vinyl);
+  deckMode.setAttribute('aria-label', `聆听模式：${label}，点击切换`);
+  deckMode.title = vinyl ? '黑胶模拟已开启，点击切换纯净原声' : '纯净原声，点击开启黑胶模拟';
+  imxMode.textContent = label;
+  imxMode.setAttribute('aria-pressed', vinyl ? 'true' : 'false');
+  imxMode.title = deckMode.title;
+  document.body.classList.toggle('listen-vinyl', vinyl);
+  emit('jc:listenmode', { mode: state.mode });
+}
+
+function setListeningMode(mode) {
+  state.mode = mode === 'vinyl' ? 'vinyl' : 'reference';
+  try { localStorage.setItem('jc-listen-mode', state.mode); } catch { /* ignore */ }
+  applyListeningMode();
+}
+
+function toggleListeningMode() {
+  setListeningMode(state.mode === 'vinyl' ? 'reference' : 'vinyl');
 }
 
 /* 注：不做周期性 playbackRate 变速。HTML 音频反复改速率会不断重采样，
@@ -751,6 +789,10 @@ function cycleCondition() {
 }
 
 function accrueWear() {
+  if (state.mode !== 'vinyl') {
+    wearLastT = audioEl.currentTime;
+    return;
+  }
   if (!activeAudioKey || audioEl.paused || audioEl.ended) {
     wearLastT = -1;
     return;
@@ -1054,6 +1096,7 @@ function updateImxInfo() {
   }
   imxTitle.textContent = album.tracks[t] || album.title;
   imxMeta.textContent = `${album.title} · ${album.released}`;
+  imxMemoryText.textContent = readNote(album.n) || album.desc || '';
 }
 
 function showImxBar() {
@@ -1093,7 +1136,7 @@ function enterImmersive() {
   }
 }
 
-function exitImmersive(fromFullscreen = false) {
+function exitImmersive() {
   if (!imxState.open) return;
   imxState.open = false;
   emit('jc:view', { view: 'stage' });
@@ -1105,7 +1148,7 @@ function exitImmersive(fromFullscreen = false) {
   document.body.classList.remove('immersive');
   state.scene?.setImmersive(false);
   resetCursorHover();
-  if (!fromFullscreen && document.fullscreenElement) {
+  if (document.fullscreenElement) {
     document.exitFullscreen().catch(() => {});
   }
   setTimeout(() => {
@@ -1859,6 +1902,7 @@ enterBtn.addEventListener('click', async () => {
   // iOS 只有在 Audio Session 声明成功时才接入 Web Audio；否则保留 <audio> 直出兜底
   if (!audio.iosFallback) audio.attachElement(audioEl);
   audio.setRpm(state.rpm);
+  audio.setMode(state.mode);
   audio.setEnabled(state.sound);
   gate.classList.add('is-open');
   document.body.classList.remove('is-gate');
@@ -1888,7 +1932,11 @@ function toggleSound() {
 
 soundBtn.addEventListener('click', toggleSound);
 imxSound.addEventListener('click', toggleSound);
+listenModeButtons.forEach((btn) => btn.addEventListener('click', () => setListeningMode(btn.dataset.listenMode)));
+deckMode.addEventListener('click', toggleListeningMode);
+imxMode.addEventListener('click', toggleListeningMode);
 if (deckCondition) deckCondition.addEventListener('click', cycleCondition);
+applyListeningMode();
 applySound();
 
 rack.addEventListener('click', (e) => {
@@ -2012,10 +2060,6 @@ imxUI.addEventListener('pointerdown', showImxBar);
 window.addEventListener('pointermove', () => {
   if (imxState.open) showImxBar();
 }, { passive: true });
-
-document.addEventListener('fullscreenchange', () => {
-  if (!document.fullscreenElement && imxState.open) exitImmersive(true);
-});
 
 audioEl.addEventListener('timeupdate', () => {
   updateAudioProgress();

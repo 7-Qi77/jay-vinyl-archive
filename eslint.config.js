@@ -30,11 +30,31 @@ export default [
         ResizeObserver: 'readonly',
         matchMedia: 'readonly',
         navigator: 'readonly',
-        history: 'readonly'
+        history: 'readonly',
+        location: 'readonly',
+        MediaMetadata: 'readonly',
+        AudioContext: 'readonly',
+        OfflineAudioContext: 'readonly',
+        AudioWorkletNode: 'readonly',
+        AudioWorkletProcessor: 'readonly',
+        registerProcessor: 'readonly',
+        sampleRate: 'readonly',
+        Blob: 'readonly',
+        URLSearchParams: 'readonly',
+        HTMLElement: 'readonly',
+        customElements: 'readonly',
+        innerWidth: 'readonly',
+        innerHeight: 'readonly'
       }
     },
     rules: {
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }]
+    }
+  },
+  {
+    files: ['tests/**/*.mjs'],
+    languageOptions: {
+      globals: { process: 'readonly' }
     }
   },
   {

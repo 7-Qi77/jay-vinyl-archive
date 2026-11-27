@@ -329,6 +329,30 @@ function makeEnvTexture(renderer) {
   g.fillStyle = softbox;
   g.fillRect(770, 52, 110, 360);
 
+  // 摄影棚墙面与两块柔光箱：清晰边缘在金属与黑胶上形成连续、可信的反射。
+  const wall = g.createLinearGradient(0, 0, W, 0);
+  wall.addColorStop(0, 'rgba(34,22,14,0.7)');
+  wall.addColorStop(0.46, 'rgba(8,7,6,0.15)');
+  wall.addColorStop(1, 'rgba(12,16,22,0.55)');
+  g.fillStyle = wall;
+  g.fillRect(0, 0, W, H);
+  g.fillStyle = 'rgba(0,0,0,0.32)';
+  g.fillRect(W * 0.485, 0, 7, H);
+  const warmBox = g.createLinearGradient(54, 0, 258, 0);
+  warmBox.addColorStop(0, 'rgba(255,229,191,0)');
+  warmBox.addColorStop(0.12, 'rgba(255,229,191,0.72)');
+  warmBox.addColorStop(0.88, 'rgba(255,229,191,0.72)');
+  warmBox.addColorStop(1, 'rgba(255,229,191,0)');
+  g.fillStyle = warmBox;
+  g.fillRect(54, 62, 204, 278);
+  const coolBox = g.createLinearGradient(600, 0, 706, 0);
+  coolBox.addColorStop(0, 'rgba(202,220,240,0)');
+  coolBox.addColorStop(0.18, 'rgba(202,220,240,0.44)');
+  coolBox.addColorStop(0.82, 'rgba(202,220,240,0.44)');
+  coolBox.addColorStop(1, 'rgba(202,220,240,0)');
+  g.fillStyle = coolBox;
+  g.fillRect(600, 92, 106, 226);
+
   const tex = new THREE.CanvasTexture(c);
   tex.mapping = THREE.EquirectangularReflectionMapping;
   tex.colorSpace = SRGB;
@@ -740,8 +764,8 @@ export function createTurntable(canvas, options = {}) {
       tScene: { value: null },
       uTexel: { value: new THREE.Vector2(1, 1) },
       uTime: { value: 0 },
-      uGrain: { value: 0.05 },
-      uBloom: { value: 0.72 },
+      uGrain: { value: 0.018 },
+      uBloom: { value: 0.32 },
       uHDR: { value: 1 },
       uTH: { value: 0.85 }
     },
@@ -837,8 +861,8 @@ export function createTurntable(canvas, options = {}) {
   const scene = new THREE.Scene();
   scene.environment = makeEnvTexture(renderer);
 
-  const camera = new THREE.PerspectiveCamera(33, 1, 0.1, 100);
-  const camBase = new THREE.Vector3(0.15, 4.15, 10.1);
+  const camera = new THREE.PerspectiveCamera(31, 1, 0.1, 100);
+  const camBase = new THREE.Vector3(0.15, 3.95, 10.1);
   const camLook = new THREE.Vector3(0.15, 0.58, 0.1);
   const camLookCurrent = camLook.clone();
   camera.position.copy(camBase);
@@ -893,11 +917,17 @@ export function createTurntable(canvas, options = {}) {
   scene.add(root);
 
   const woodTex = makeWoodTexture(renderer);
-  const woodMat = new THREE.MeshStandardMaterial({
+  const woodMat = new THREE.MeshPhysicalMaterial({
     map: woodTex,
-    roughness: 0.46,
-    metalness: 0.05,
-    envMapIntensity: 0.58
+    bumpMap: woodTex,
+    bumpScale: 0.012,
+    roughness: 0.44,
+    metalness: 0.04,
+    clearcoat: 0.3,
+    clearcoatRoughness: 0.4,
+    sheen: 0.12,
+    sheenColor: new THREE.Color(0x6f4426),
+    envMapIntensity: 0.62
   });
 
   const PLINTH_W = 6.6;
@@ -913,17 +943,23 @@ export function createTurntable(canvas, options = {}) {
   plinth.receiveShadow = true;
   root.add(plinth);
 
-  const brassMat = new THREE.MeshStandardMaterial({
+  const brassMat = new THREE.MeshPhysicalMaterial({
     color: 0xc7a56b,
     metalness: 1,
-    roughness: 0.24,
-    envMapIntensity: 1.35
+    roughness: 0.22,
+    anisotropy: 0.38,
+    anisotropyRotation: Math.PI / 2,
+    clearcoat: 0.16,
+    clearcoatRoughness: 0.24,
+    envMapIntensity: 1.25
   });
-  const darkMetalMat = new THREE.MeshStandardMaterial({
+  const darkMetalMat = new THREE.MeshPhysicalMaterial({
     color: 0x1a1917,
-    metalness: 0.78,
-    roughness: 0.34,
-    envMapIntensity: 0.82
+    metalness: 0.82,
+    roughness: 0.3,
+    anisotropy: 0.22,
+    clearcoat: 0.12,
+    envMapIntensity: 0.86
   });
 
   // 机脚
@@ -1009,14 +1045,16 @@ export function createTurntable(canvas, options = {}) {
   });
   const discTopMat = new THREE.MeshPhysicalMaterial({
     color: 0xffffff,
-    roughness: 0.28,
-    metalness: 0.04,
+    roughness: 0.24,
+    metalness: 0.05,
     clearcoat: 1,
-    clearcoatRoughness: 0.1,
-    specularIntensity: 0.45,
+    clearcoatRoughness: 0.085,
+    anisotropy: 0.72,
+    anisotropyRotation: Math.PI / 2,
+    specularIntensity: 0.62,
     bumpMap: grooveBump,
-    bumpScale: 0.02,
-    envMapIntensity: 0.3,
+    bumpScale: 0.018,
+    envMapIntensity: 0.42,
     transparent: true,
     opacity: 1
   });
@@ -1635,8 +1673,8 @@ export function createTurntable(canvas, options = {}) {
     immersive = on;
     clearGroup('cam');
     forceUntil = performance.now() + 1200;
-    camBase.y = on ? 3.35 : 4.15;
-    camLook.set(0.15, on ? 0.55 : 0.58, 0.1);
+    camBase.y = on ? 4.0 : 3.95;
+    camLook.set(0.15, on ? 0.62 : 0.58, 0.1);
     resize();
   }
 
@@ -1872,11 +1910,11 @@ export function createTurntable(canvas, options = {}) {
     postMat.uniforms.uTexel.value.set(1 / rtSize.x, 1 / rtSize.y);
     const aspect = w / h;
     camera.aspect = aspect;
-    const needZ = 7.4 / (0.592 * Math.max(aspect, 0.7));
+    const needZ = 7.4 / (0.554 * Math.max(aspect, 0.7));
     camBase.z = Math.max(9.7, Math.min(16.5, needZ));
     if (immersive) {
-      const width = aspect < 1 ? 5.8 : 7.4;
-      camBase.z = Math.max(8.2, Math.min(30, width / (0.592 * Math.max(aspect, 0.38))));
+      const width = aspect < 1 ? 8.4 : 8.8;
+      camBase.z = Math.max(9.6, Math.min(34, width / (0.554 * Math.max(aspect, 0.38))));
     }
     camera.updateProjectionMatrix();
     forceUntil = performance.now() + 600;

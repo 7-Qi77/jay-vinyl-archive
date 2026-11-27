@@ -9,15 +9,16 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const out = resolve(root, 'www');
 
-const FILES = ['index.html', 'styles.css'];
+const FILES = ['index.html', 'styles.css', 'manifest.webmanifest', 'sw.js'];
 const DIRS = [
   'js',
   'assets/fonts',
   'assets/vendor',
   'assets/audio',
-  'assets/lyrics'
+  'assets/lyrics',
+  'assets/icons'
 ];
-const OPTIONAL_FILES = ['assets/track-meta.json'];
+const OPTIONAL_FILES = ['assets/track-meta.json', 'assets/vinyl-profiles.json', 'assets/social-card.jpg'];
 
 const exists = async (p) => {
   try {

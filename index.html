@@ -41,7 +41,7 @@
     { "imports": { "three": "./assets/vendor/three.module.js" } }
   </script>
 </head>
-<body>
+<body class="no-retro">
   <div class="grain" aria-hidden="true"></div>
   <div class="vignette" aria-hidden="true"></div>
 
@@ -215,6 +215,8 @@
             <div class="deck-player__title">
               <strong id="deckTitle">—</strong>
               <span class="deck-player__src" id="deckSrc">试听</span>
+              <button class="deck-player__mode" id="deckMode" type="button"
+                title="切换原声 / 黑胶聆听模式" aria-label="聆听模式：原声">原声</button>
               <button class="deck-player__condition" id="deckCondition" type="button"
                 data-cursor="唱片状态" title="切换唱片状态" aria-label="切换唱片状态：日常">日常</button>
             </div>
@@ -224,6 +226,10 @@
         </div>
 
         <div class="stage-caption">
+          <span class="mode-switch" role="group" aria-label="聆听模式">
+            <button type="button" data-listen-mode="reference" class="is-active" aria-pressed="true" title="保留数字音源，不经黑胶模拟">原声</button>
+            <button type="button" data-listen-mode="vinyl" aria-pressed="false" title="启用 RIAA、机械起伏与唱片表面声">黑胶</button>
+          </span>
           <span class="rpm-switch" role="group" aria-label="唱片转速">
             <button type="button" data-rpm="33" class="is-active" aria-pressed="true">33⅓</button>
             <button type="button" data-rpm="45" aria-pressed="false">45</button>
@@ -308,11 +314,13 @@
       </div>
       <div class="imx__actions">
         <button id="imxLyrics" type="button">歌词</button>
+        <button id="imxMode" type="button" aria-pressed="true" title="切换原声 / 黑胶聆听模式">原声</button>
         <button id="imxSound" type="button">声音</button>
         <button id="imxExit" type="button">退出</button>
       </div>
     </div>
     <div class="imx__bottom">
+      <p class="imx__memory" id="imxMemory"><span>那年的话</span><em id="imxMemoryText"></em></p>
       <p class="imx__lyric" id="imxLyric"></p>
       <p class="imx__lyric-next" id="imxLyricNext"></p>
       <div class="imx__player" id="imxPlayer">
@@ -364,7 +372,7 @@
         <span class="gate__enter-text">正在筹备听音室</span>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M13 5l7 7-7 7" /></svg>
       </button>
-      <p class="gate__note">建议开启声音 · 点击进入后播放合成黑胶底噪 · 曲目支持官方试听与本机完整版</p>
+      <p class="gate__note">建议开启声音 · 原声 / 黑胶双聆听模式 · 曲目支持官方试听与本机完整版</p>
     </div>
 
     <div class="gate__footer">
@@ -375,6 +383,6 @@
 
   <noscript><p class="noscript">需要启用 JavaScript 才能进入听音室。</p></noscript>
 
-  <script type="module" src="./js/app.js"></script>
+  <script type="module" src="./js/app.js?v=20261127-final"></script>
 </body>
 </html>

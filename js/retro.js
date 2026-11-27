@@ -400,7 +400,7 @@ function wire() {
 export function bootRetro(callbacks) {
   cb = callbacks || {};
   albums = cb.albums || [];
-  try { enabled = localStorage.getItem('jc-retro') !== '0'; } catch { enabled = true; }
+  try { enabled = localStorage.getItem('jc-retro') === '1'; } catch { enabled = false; }
   buildMisc();
   buildBench();
   buildSheet();

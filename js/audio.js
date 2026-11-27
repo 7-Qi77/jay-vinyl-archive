@@ -11,6 +11,7 @@
  * 4. wow/flutter/偏心 warp 只调制 DelayNode 与增益，绝不改 HTMLAudio 的 playbackRate；
  * 5. 所有增益变化走 setTargetAtTime，避免切换咔哒；
  * 6. 参数可由「压碟档案」(setProfile) 逐曲驱动，clean/daily/worn 保留为全局偏移。
+ * 7. 原声模式绕过 RIAA、噪声、机械调制与限幅；黑胶模式才启用完整物理链。
  */
 
 const CONDITION_PRESETS = {
@@ -64,6 +65,9 @@ export class VinylAudio {
     this.ctx = null;
     this.master = null;
     this.limiter = null;
+    this._directGain = null;
+    this._vinylGain = null;
+    this.mode = options.mode === 'vinyl' ? 'vinyl' : 'reference';
     this.noiseBus = null;
     this.sfxBus = null;
     this.musicGain = null;
@@ -147,19 +151,26 @@ export class VinylAudio {
 
     this.ctx = new Ctx({ latencyHint: 'playback' });
     this.master = this.ctx.createGain();
-    this.master.gain.value = this.enabled ? 0.9 : 0;
+    this.master.gain.value = this.enabled ? 1 : 0;
     this.master.connect(this.ctx.destination);
 
+    this._directGain = this.ctx.createGain();
+    this._directGain.gain.value = this.mode === 'reference' ? 1 : 0;
+    this._directGain.connect(this.master);
+
+    this._vinylGain = this.ctx.createGain();
+    this._vinylGain.gain.value = this.mode === 'vinyl' ? 1 : 0;
     this.limiter = this.ctx.createDynamicsCompressor();
-    this.limiter.threshold.value = -6;
-    this.limiter.knee.value = 6;
-    this.limiter.ratio.value = 4;
+    this.limiter.threshold.value = -1;
+    this.limiter.knee.value = 0;
+    this.limiter.ratio.value = 20;
     this.limiter.attack.value = 0.003;
-    this.limiter.release.value = 0.25;
-    this.limiter.connect(this.master);
+    this.limiter.release.value = 0.12;
+    this.limiter.connect(this._vinylGain);
+    this._vinylGain.connect(this.master);
 
     this.sfxBus = this.ctx.createGain();
-    this.sfxBus.gain.value = 1;
+    this.sfxBus.gain.value = this.mode === 'vinyl' ? 1 : 0;
     this.sfxBus.connect(this.limiter);
 
     // 沟槽总线：音乐（worklet 携带或直连）+ 噪底 + 电机都汇到这里，之后才过回放 EQ。
@@ -246,7 +257,22 @@ export class VinylAudio {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
     this.master.gain.cancelScheduledValues(now);
-    this.master.gain.setTargetAtTime(this.enabled ? 0.9 : 0, now, 0.08);
+    this.master.gain.setTargetAtTime(this.enabled ? 1 : 0, now, 0.08);
+  }
+
+  setMode(mode) {
+    this.mode = mode === 'vinyl' ? 'vinyl' : 'reference';
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const ramp = (param, value, tau = 0.045) => {
+      param.cancelScheduledValues(now);
+      param.setTargetAtTime(value, now, tau);
+    };
+    ramp(this._directGain.gain, this.mode === 'reference' ? 1 : 0);
+    ramp(this._vinylGain.gain, this.mode === 'vinyl' ? 1 : 0);
+    ramp(this.sfxBus.gain, this.mode === 'vinyl' ? 1 : 0);
+    this._setMotor(this.mode === 'vinyl' && this.ducking);
+    this._applyIosBedVolume();
   }
 
   setDucking(on) {
@@ -441,6 +467,7 @@ export class VinylAudio {
     try {
       const ctx = this.ctx;
       const src = ctx.createMediaElementSource(el);
+      src.connect(this._directGain);
       let node = src;
       if (ctx.createIIRFilter) {
         const { rec } = riaaSections(ctx);
@@ -778,8 +805,8 @@ export class VinylAudio {
     master.gain.value = 0.9;
     master.connect(ctx.destination);
     const limiter = ctx.createDynamicsCompressor();
-    limiter.threshold.value = -6; limiter.knee.value = 6; limiter.ratio.value = 4;
-    limiter.attack.value = 0.003; limiter.release.value = 0.25;
+    limiter.threshold.value = -1; limiter.knee.value = 0; limiter.ratio.value = 20;
+    limiter.attack.value = 0.003; limiter.release.value = 0.12;
     limiter.connect(master);
 
     const grooveTrim = ctx.createGain();
@@ -1036,7 +1063,7 @@ export class VinylAudio {
   }
 
   _iosBedVolume() {
-    return this._noiseBase().ios ?? 0.07;
+    return this.mode === 'reference' ? 0 : (this._noiseBase().ios ?? 0.07);
   }
 
   _applyIosBedVolume() {
@@ -1110,6 +1137,9 @@ export class VinylAudio {
     const params = this._workletNode?.parameters;
     return {
       engine: this._workletReady ? 'audioworklet' : 'buffer',
+      mode: this.mode,
+      directGain: this._directGain?.gain.value ?? null,
+      vinylGain: this._vinylGain?.gain.value ?? null,
       workletReady: this._workletReady,
       workletError: this._lastNoiseError,
       condition: this._condition,

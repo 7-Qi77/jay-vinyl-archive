@@ -1665,6 +1665,7 @@ body.immersive .topbar * { opacity: 0; pointer-events: none !important; }
   transition: color 0.3s, border-color 0.3s;
 }
 .imx__actions button:hover { color: var(--ink); border-color: rgba(201, 168, 106, 0.5); }
+.imx__actions #imxMode[aria-pressed="true"] { color: var(--brass); border-bottom-color: rgba(201, 168, 106, 0.5); }
 
 .imx__bottom {
   position: absolute;
@@ -1675,6 +1676,29 @@ body.immersive .topbar * { opacity: 0; pointer-events: none !important; }
   text-align: center;
   pointer-events: none;
 }
+.imx__memory {
+  margin: 0 0 18px;
+  color: rgba(201, 168, 106, 0.72);
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.8);
+}
+.imx__memory span {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 8px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+.imx__memory em {
+  display: block;
+  max-width: 620px;
+  margin: 0 auto;
+  font-family: var(--serif);
+  font-size: clamp(12px, 1.1vw, 15px);
+  font-style: normal;
+  line-height: 1.8;
+  color: rgba(237, 229, 215, 0.58);
+}
+.imx__memory:has(em:empty) { display: none; }
 .imx__lyric {
   min-height: 34px;
   margin: 0;
@@ -2092,13 +2116,13 @@ body.immersive .topbar * { opacity: 0; pointer-events: none !important; }
   transition: opacity 0.5s ease;
 }
 
-.rpm-switch {
+.rpm-switch, .mode-switch {
   display: inline-flex;
   align-items: center;
   gap: 2px;
   letter-spacing: 0.1em;
 }
-.rpm-switch button {
+.rpm-switch button, .mode-switch button {
   padding: 3px 5px;
   font-size: 8px;
   letter-spacing: 0.1em;
@@ -2106,8 +2130,8 @@ body.immersive .topbar * { opacity: 0; pointer-events: none !important; }
   border-bottom: 1px solid transparent;
   transition: color 0.3s, border-color 0.3s;
 }
-.rpm-switch button:hover { color: var(--ink-dim); }
-.rpm-switch button.is-active {
+.rpm-switch button:hover, .mode-switch button:hover { color: var(--ink-dim); }
+.rpm-switch button.is-active, .mode-switch button.is-active {
   color: var(--brass);
   border-bottom-color: rgba(201, 168, 106, 0.5);
 }
@@ -2842,7 +2866,7 @@ body.immersive .topbar * { opacity: 0; pointer-events: none !important; }
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: none; }
 }
-.view--stage.is-immersive .deck-player { opacity: 0; pointer-events: none; }
+.view--stage.is-immersive .deck-player { animation: none; opacity: 0; visibility: hidden; pointer-events: none; }
 
 .deck-player__transport { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .deck-player__btn {
@@ -2894,6 +2918,22 @@ body.immersive .topbar * { opacity: 0; pointer-events: none !important; }
   border-radius: 1px;
 }
 .deck-player__src--local { color: var(--brass); border-color: rgba(201, 168, 106, 0.45); }
+.deck-player__mode {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  min-height: 22px;
+  font-size: 7px;
+  letter-spacing: 0.16em;
+  color: var(--ink-dim);
+  border: 1px solid var(--line-soft);
+  border-radius: 2px;
+  transition: color 0.25s, border-color 0.25s, background 0.25s;
+}
+.deck-player__mode:hover, .deck-player__mode.is-vinyl {
+  color: var(--brass);
+  border-color: rgba(201, 168, 106, 0.5);
+  background: rgba(201, 168, 106, 0.06);
+}
 .deck-player__condition {
   flex: 0 0 auto;
   margin-left: auto;
@@ -2912,6 +2952,11 @@ body.immersive .topbar * { opacity: 0; pointer-events: none !important; }
   background: rgba(201, 168, 106, 0.06);
 }
 @media (pointer: coarse) {
+  .deck-player__mode {
+    min-height: 28px;
+    padding: 7px;
+    font-size: 8px;
+  }
   .deck-player__condition {
     min-height: 28px;
     padding: 7px 7px;
@@ -3138,6 +3183,8 @@ body.immersive .topbar * { opacity: 0; pointer-events: none !important; }
 .bench .deck-player__src { color: var(--ris); border-color: rgba(42, 33, 24, 0.4); }
 .bench .deck-player__src--local { color: var(--rbr); border-color: rgba(138, 106, 51, 0.55); }
 .bench .deck-player__condition { color: var(--rbr); border-color: rgba(138, 106, 51, 0.45); }
+.bench .deck-player__mode { color: var(--ri); border-color: rgba(42, 33, 24, 0.35); }
+.bench .deck-player__mode.is-vinyl { color: var(--rbr); border-color: rgba(138, 106, 51, 0.55); }
 .bench .deck-player__condition:hover { background: rgba(138, 106, 51, 0.08); border-color: rgba(138, 106, 51, 0.75); }
 .bench .deck-player__time { color: var(--ris); min-width: 0; text-align: left; }
 .bench hose-slider { width: 210px; flex: 0 0 auto; }

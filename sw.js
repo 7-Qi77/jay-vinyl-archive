@@ -1,5 +1,5 @@
 /* 静态站点离线壳：只缓存同源静态资源，音频与 iTunes 接口保持网络直连。 */
-const VERSION = 'jc-vinyl-v3-20261126';
+const VERSION = 'jc-vinyl-v6-20261127';
 const CORE_CACHE = `${VERSION}-core`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 
@@ -8,15 +8,15 @@ const CORE = [
   './index.html',
   './styles.css',
   './manifest.webmanifest',
-  './js/app.js',
-  './js/audio.js',
-  './js/scene.js',
+  './js/app.js?v=20261127-final',
+  './js/audio.js?v=20261127-final',
+  './js/scene.js?v=20261127-final',
   './js/data.js',
   './js/media.js',
   './js/covers.js',
   './js/lyricstore.js',
   './js/vinyl-worklet.js',
-  './js/retro.js',
+  './js/retro.js?v=20261127-final',
   './js/pixel-room.js',
   './assets/vinyl-profiles.json',
   './assets/vendor/three.module.js',
@@ -35,7 +35,11 @@ const AUDIO_RE = /\.(?:m4a|mp3|aac|wav|ogg|opus)$/i;
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CORE_CACHE);
-    await Promise.all(CORE.map((url) => cache.add(url).catch(() => {})));
+    await Promise.all(CORE.map(async (url) => {
+      // 升级时强制重新取网，避免旧 Service Worker 的运行时缓存把旧包带入新版本。
+      const response = await fetch(new Request(url, { cache: 'reload' })).catch(() => null);
+      if (response?.ok) await cache.put(url, response);
+    }));
     await self.skipWaiting();
   })());
 });
