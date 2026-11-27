@@ -105,7 +105,7 @@ try {
   ok('沉浸模式呈现专辑回忆文案', (await page.locator('#imxMemoryText').textContent()).length > 10);
   ok('沉浸模式同步聆听模式', (await page.locator('#imxMode').textContent()) === '原声');
   await page.keyboard.press('Escape');
-  await page.waitForTimeout(800);
+  await page.locator('#imxUI').waitFor({ state: 'hidden', timeout: 60000 });
   ok('沉浸模式退出', await page.locator('#imxUI').isHidden());
 
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
