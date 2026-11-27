@@ -19,8 +19,9 @@ page.on('pageerror', (error) => errors.push(error.message));
 await page.addInitScript(() => localStorage.clear());
 
 try {
+  const cpuThrottle = Math.max(1, Number(process.env.PERF_CPU_THROTTLE) || 4);
   const cdp = await context.newCDPSession(page);
-  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpuThrottle });
   await page.goto(`${BASE}/?perf=${Date.now()}`, { waitUntil: 'networkidle' });
   const initial = await page.evaluate(() => {
     const resources = performance.getEntriesByType('resource').filter((entry) => entry.name.includes(location.host));
@@ -56,7 +57,7 @@ try {
   const result = { initial, frames, errors };
   console.log(JSON.stringify(result, null, 2));
   const pass = initial.transferKB < 1400 && frames.avg < 34 && frames.p95 < 50 && errors.length === 0;
-  console.log(pass ? 'PERF PASS · mobile 4× CPU budget' : 'PERF FAIL · mobile 4× CPU budget');
+  console.log(pass ? `PERF PASS · mobile ${cpuThrottle}× CPU budget` : `PERF FAIL · mobile ${cpuThrottle}× CPU budget`);
   if (!pass) process.exitCode = 1;
 } finally {
   await browser.close();

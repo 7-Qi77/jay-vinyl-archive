@@ -45,14 +45,26 @@ jobs:
       - name: 安装测试浏览器
         run: npx playwright install --with-deps chromium
 
-      - name: 发布产物浏览器与无障碍回归
+      - name: 发布产物功能回归
         run: |
           python -m http.server 4173 --directory _site > /tmp/jc-pages.log 2>&1 &
           SERVER_PID=$!
           trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
           BASE_URL=http://127.0.0.1:4173 BROWSER_CHANNEL=chromium npm run test:smoke
+
+      - name: 发布产物无障碍回归
+        run: |
+          python -m http.server 4173 --directory _site > /tmp/jc-pages.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
           BASE_URL=http://127.0.0.1:4173 BROWSER_CHANNEL=chromium npm run test:a11y
-          BASE_URL=http://127.0.0.1:4173 BROWSER_CHANNEL=chromium npm run test:perf
+
+      - name: 发布产物性能预算
+        run: |
+          python -m http.server 4173 --directory _site > /tmp/jc-pages.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          BASE_URL=http://127.0.0.1:4173 BROWSER_CHANNEL=chromium PERF_CPU_THROTTLE=2 npm run test:perf
 
       - name: 发布体积
         run: |

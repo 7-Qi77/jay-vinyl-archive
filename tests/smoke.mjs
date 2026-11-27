@@ -41,12 +41,13 @@ try {
     /* 封面走网络，失败有档案版兜底 */
   }
 
-  await page.locator('.crate-item').nth(4).click();
+  await page.locator('.crate-item').nth(2).click();
   await page.waitForTimeout(3400);
   ok('进入听音室', await page.locator('#viewStage').isVisible());
 
   const trackCount = await page.locator('.track').count();
   ok(`曲目表加载（${trackCount} 首，≥9 视为完整）`, trackCount >= 9);
+  const localTrack = page.locator('.track-row').filter({ hasText: '暗号' }).first();
 
   await page.click('[data-listen-mode="vinyl"]');
   await page.waitForTimeout(450);
@@ -58,7 +59,7 @@ try {
   await page.click('[data-listen-mode="vinyl"]');
   await page.waitForTimeout(450);
 
-  await page.locator('.track').first().click();
+  await localTrack.locator('.track').click();
   await page.waitForFunction(() => window.__jc?.audio?.debug.transport === 'playing');
   await page.waitForTimeout(500);
   ok('播放时启用黑胶噪底', await page.evaluate(() => window.__jc.audio.debug.workletLevels.crackle > 0.01));
@@ -78,7 +79,7 @@ try {
   await page.click('[data-listen-mode="reference"]');
   await page.click('[data-rpm="33"]');
   await page.waitForTimeout(600);
-  await page.locator('.track-row').first().locator('.track__lyric').click();
+  await localTrack.locator('.track__lyric').click();
   await page.waitForTimeout(300);
   ok('歌词内页打开', await page.locator('#lyricsPanel').isVisible());
   await page.keyboard.press('Escape');
@@ -105,9 +106,9 @@ try {
   await mobile.goto(`${BASE}/?mobile=${Date.now()}`, { waitUntil: 'networkidle' });
   await mobile.click('#enterBtn');
   await mobile.waitForTimeout(1600);
-  await mobile.locator('.crate-item').nth(4).click();
+  await mobile.locator('.crate-item').nth(2).click();
   await mobile.waitForTimeout(3200);
-  await mobile.locator('.track').first().click();
+  await mobile.locator('.track-row').filter({ hasText: '暗号' }).first().locator('.track').click();
   await mobile.waitForTimeout(500);
   ok('移动端播放控制台可用', await mobile.locator('#deckMode').isVisible());
   await mobile.click('#deckMode');
